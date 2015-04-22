@@ -312,3 +312,100 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
 
 	return 0;
 }
+
+// Deletes all records in the file by marking each page as empty
+RC RecordBasedFileManager::deleteRecords(FileHandle &fileHandle){
+	unsigned num_pages = fileHandle.getNumberOfPages();
+	int i;
+	void * pageData = malloc(PAGE_SIZE);
+	newRecordBasedPage(pageData);
+	for(i = 0; i<num_pages; i++){
+		if(fileHandle.writePage(i, pageData) != SUCCESS){
+			return 1;
+		}
+	}
+	
+	return 0;
+}
+
+// Deletes the record with the given RID
+RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid){
+	// Retrieve the specific page.
+	void * pageData = malloc(PAGE_SIZE);
+	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS){
+		return 1;
+	}
+
+	// Checks if the specific slot id exists in the page.
+	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
+	if(slotHeader.recordEntriesNumber < rid.slotNum){
+		return 2;
+	}
+	
+	SlotDirectoryRecordEntry entryToUpdate = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
+	entryToUpdate.status = Inactive;
+	setSlotDirectoryRecordEntry(pageData, rid.slotNum, entryToUpdate);
+	
+	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
+		return 1;
+	}
+	
+	free(pageData);
+	
+	return 0;
+}
+
+// updates the record at specified RID
+// Does this by inserting the updated data, and replacing the directory
+// entry with the redirect RID 
+RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid){
+	RID newRid;
+	SlotDirectoryRecordEntry redirectEntry;
+	
+	void * pageData = malloc(PAGE_SIZE);
+	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS){
+		return 1;
+	}
+
+	// Checks if the specific slot id exists in the page.
+	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
+	if(slotHeader.recordEntriesNumber < rid.slotNum){
+		return 2;
+	}
+	
+	// Insert the updated value and get the new RID
+	if(insertRecord(fileHandle, recordDescriptor, data, newRid) != SUCCESS){
+		return 1;
+	}
+	
+	// Set the redirect RID so that lookups will be redirected to the
+	// new data
+	redirectEntry.status = Redirect;
+	redirectEntry.redirectRid = newRid;
+	setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectRid);
+	
+	// Write the updated page out.
+	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
+		return 1;
+	}
+	
+	free(pageData);
+	
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
