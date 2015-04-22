@@ -201,17 +201,18 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
 
 	// Adding the new record reference in the slot directory.
 	SlotDirectoryRecordEntry newRecordEntry;
-	newRecordEntry.length = recordSize;
-	newRecordEntry.offset = slotHeader.freeSpaceOffset - recordSize;
+	newRecordEntry.status = Active;
+	newRecordEntry.entry.length = recordSize;
+	newRecordEntry.entry.offset = slotHeader.freeSpaceOffset - recordSize;
 	setSlotDirectoryRecordEntry(pageData, rid.slotNum, newRecordEntry);
 
 	// Updating the slot directory header.
-	slotHeader.freeSpaceOffset = newRecordEntry.offset;
+	slotHeader.freeSpaceOffset = newRecordEntry.entry.offset;
 	slotHeader.recordEntriesNumber += 1;
 	setSlotDirectoryHeader(pageData, slotHeader);
 
 	// Adding the record data.
-	memcpy	(((char*) pageData + newRecordEntry.offset), data, recordSize);
+	memcpy	(((char*) pageData + newRecordEntry.entry.offset), data, recordSize);
 
 	// Writing the page to disk.
 	if (pageFound)
@@ -243,10 +244,27 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
 	// Gets the slot directory record entry data.
 	SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
-
-	// Retrieve the actual entry data.
-	memcpy	((char*) data, ((char*) pageData + recordEntry.offset), recordEntry.length);
-
+	
+	if(recordEntry.status == Active){
+		// Retrieve the actual entry data.
+		memcpy	((char*) data, ((char*) pageData + recordEntry.entry.offset), recordEntry.entry.length);
+	}
+	else if(recordEntry.status == Inactive){
+		// This is the case if the record is deleted
+		fprintf(stderr, "rbfm.cc: RecordBasedFileManager.readRecord: Record in %d : %d has been deleted\n",
+			rid.pageNum, rid.slotNum);
+		return 3;
+	}
+	else if(recordEntry.status == Redirect){
+		// If the record has been moved, recursively read it
+		readRecord(filehandle, recordDescriptor, recordEntry.redirectRid, data);
+	}
+	else{
+		// If none of these things are true, the directory entry is malformed
+		fprintf(stderr, "rbfm.cc: RecordBasedFileManager.readRecord: Dir entry is malformed\n");
+		return 4;
+	}
+	
 	free(pageData);
 	return 0;
 }

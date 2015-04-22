@@ -32,10 +32,22 @@ typedef struct
   unsigned recordEntriesNumber;
 } SlotDirectoryHeader;
 
+typedef enum {Active, Inactive, Redirect} RecordStatus;
+typedef struct{
+  unsigned length;
+  int offset;
+} entry_t;
+
+// Changed SlotDirectoryRecordEntry as per Paolo's recommendation
+// It now contains a status indicating whether the record is active,
+// deleted, or has been moved to a new location
 typedef struct
 {
-  unsigned length;
-  int offset;	// TODO (project 2?) Offset = -1 means deleted record
+  RecordStatus status;
+  union{
+    entry_t entry;
+    RID redirectRid;
+  };
 } SlotDirectoryRecordEntry;
 
 typedef SlotDirectoryRecordEntry* SlotDirectory;
