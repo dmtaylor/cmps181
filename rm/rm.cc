@@ -1,3 +1,14 @@
+/*
+ * rm.cc:   The implementation file for the relation manager module
+ * 
+ * By:  	David Taylor
+ *      	Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
 
 #include "rm.h"
 

@@ -1,3 +1,14 @@
+/*
+ * pfm.h:   Header file for the paged file manager
+ * 
+ * By:      David Taylor
+ *          Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
 #include <string>
 
 #ifndef _pfm_h_

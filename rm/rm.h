@@ -1,3 +1,15 @@
+/*
+ * rm.h:  A header file for the relation manager module
+ * 
+ * By:    David Taylor
+ *        Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+
 
 #ifndef _rm_h_
 #define _rm_h_

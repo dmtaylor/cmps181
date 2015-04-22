@@ -1,3 +1,15 @@
+/*
+ * pmf.cc:	The implementation file for tbhe paged file manager module
+ * 
+ * By:  	David Taylor
+ *      	Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+
 // CMPS 181 - Project 1
 // Author:				Paolo Di Febbo
 // File description:	Implementation of a paged file manager.

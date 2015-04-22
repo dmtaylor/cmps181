@@ -1,3 +1,16 @@
+/*
+ * rbfm.cc:	The implementation file for the relation based file
+ * 			manager module.
+ * 
+ * By:  	David Taylor
+ *      	Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+
 // CMPS 181 - Project 1
 // Author:				Paolo Di Febbo
 // File description:	Implementing the "Variable length records" page structure

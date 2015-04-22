@@ -1,3 +1,15 @@
+/*
+ * rbfm.h:  A header file for the relational based file manager
+ * 
+ * By:  David Taylor
+ *      Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+
 #ifndef _rbfm_h_
 #define _rbfm_h_
 
