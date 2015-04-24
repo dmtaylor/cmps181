@@ -1,14 +1,14 @@
 /*
  * rbfm.cc:	The implementation file for the relation based file
  * 			manager module.
- * 
+ *
  * By:  	David Taylor
  *      	Jake Zidow
- * 
+ *
  * Starter code provided by Paolo Di Febbo, Shel Finkelstein
- * 
+ *
  * CMPS181 Spring 2015
- * 
+ *
  * */
 
 // CMPS 181 - Project 1
@@ -244,7 +244,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
 	// Gets the slot directory record entry data.
 	SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
-	
+
 	if(recordEntry.status == Active){
 		// Retrieve the actual entry data.
 		memcpy	((char*) data, ((char*) pageData + recordEntry.entry.offset), recordEntry.entry.length);
@@ -264,7 +264,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 		fprintf(stderr, "rbfm.cc: RecordBasedFileManager.readRecord: Dir entry is malformed\n");
 		return 4;
 	}
-	
+
 	free(pageData);
 	return 0;
 }
@@ -324,7 +324,7 @@ RC RecordBasedFileManager::deleteRecords(FileHandle &fileHandle){
 			return 1;
 		}
 	}
-	
+
 	return 0;
 }
 
@@ -341,27 +341,27 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Att
 	if(slotHeader.recordEntriesNumber < rid.slotNum){
 		return 2;
 	}
-	
+
 	SlotDirectoryRecordEntry entryToUpdate = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
 	entryToUpdate.status = Inactive;
 	setSlotDirectoryRecordEntry(pageData, rid.slotNum, entryToUpdate);
-	
+
 	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
 		return 1;
 	}
-	
+
 	free(pageData);
-	
+
 	return 0;
 }
 
 // updates the record at specified RID
 // Does this by inserting the updated data, and replacing the directory
-// entry with the redirect RID 
+// entry with the redirect RID
 RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid){
 	RID newRid;
 	SlotDirectoryRecordEntry redirectEntry;
-	
+
 	void * pageData = malloc(PAGE_SIZE);
 	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS){
 		return 1;
@@ -372,40 +372,83 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 	if(slotHeader.recordEntriesNumber < rid.slotNum){
 		return 2;
 	}
-	
+
 	// Insert the updated value and get the new RID
 	if(insertRecord(fileHandle, recordDescriptor, data, newRid) != SUCCESS){
 		return 1;
 	}
-	
+
 	// Set the redirect RID so that lookups will be redirected to the
 	// new data
 	redirectEntry.status = Redirect;
 	redirectEntry.redirectRid = newRid;
 	setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectRid);
-	
+
 	// Write the updated page out.
 	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
 		return 1;
 	}
-	
+
 	free(pageData);
-	
+
 	return 0;
 }
 
+RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data){
+    
+    void* readData = calloc(200, 1);
+    if(readData == NULL){
+        fprintf(stderr, "readAttribute: Error, malloc failed\n");
+        return 1;
+    }
+    if(readRecord(fileHandle, recordDescriptor, rid, readData) != SUCCESS){
+        fprintf(stderr,"readAttribute: unable to find record\n");
+        return 2;
+    }
+    int i;
+    int offset = 0;
+    int flag = 0;
+    for(i = 0; i<recordDescriptor.size(); i++){
+        if(attributeName.compare(recordDescriptor[i].name) == 0){
+            memcpy(data, (char*) readData + offset, recordDescriptor[i].length);
+            flag = 1;
+            break;
+        }
+        else{
+            offset += recordDescriptor[i].length;
+        }
+        
+    }
+    
+    if(!flag){
+        fprintf(stderr, "readAttribute: Error, attrubite name not found\n");
+        return 3;
+    }
+    
+    free(readData);
+    
+    return 0;
+}
 
+RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
+    
+    //TODO
+    
+    return -1;
+    
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+RC RecordBasedFileManager::scan(FileHandle &fileHandle,
+    const vector<Attribute> &recordDescriptor,
+    const string &conditionAttribute,
+    const CompOp compOp,                  // comparision type such as "<" and "="
+    const void *value,                    // used in the comparison
+    const vector<string> &attributeNames, // a list of projected attributes
+    RBFM_ScanIterator &rbfm_ScanIterator)
+{
+    
+    //TODO
+    
+    return -1;
+    
+}
