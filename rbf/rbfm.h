@@ -38,6 +38,13 @@ typedef struct{
   int offset;
 } entry_t;
 
+// Record ID
+typedef struct
+{
+  unsigned pageNum;
+  unsigned slotNum;
+} RID;
+
 // Changed SlotDirectoryRecordEntry as per Paolo's recommendation
 // It now contains a status indicating whether the record is active,
 // deleted, or has been moved to a new location
@@ -51,14 +58,6 @@ typedef struct
 } SlotDirectoryRecordEntry;
 
 typedef SlotDirectoryRecordEntry* SlotDirectory;
-
-// Record ID
-typedef struct
-{
-  unsigned pageNum;
-  unsigned slotNum;
-} RID;
-
 
 // Attribute
 typedef enum { TypeInt = 0, TypeReal, TypeVarChar } AttrType;

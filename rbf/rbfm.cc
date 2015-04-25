@@ -257,7 +257,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 	}
 	else if(recordEntry.status == Redirect){
 		// If the record has been moved, recursively read it
-		readRecord(filehandle, recordDescriptor, recordEntry.redirectRid, data);
+		readRecord(fileHandle, recordDescriptor, recordEntry.redirectRid, data);
 	}
 	else{
 		// If none of these things are true, the directory entry is malformed
@@ -316,10 +316,10 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
 // Deletes all records in the file by marking each page as empty
 RC RecordBasedFileManager::deleteRecords(FileHandle &fileHandle){
 	unsigned num_pages = fileHandle.getNumberOfPages();
-	int i;
+	// int i;
 	void * pageData = malloc(PAGE_SIZE);
 	newRecordBasedPage(pageData);
-	for(i = 0; i<num_pages; i++){
+	for(unsigned i = 0; i<num_pages; i++){
 		if(fileHandle.writePage(i, pageData) != SUCCESS){
 			return 1;
 		}
@@ -382,7 +382,9 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 	// new data
 	redirectEntry.status = Redirect;
 	redirectEntry.redirectRid = newRid;
-	setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectRid);
+
+	// setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectRid); Comiler Error
+    setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectEntry);
 
 	// Write the updated page out.
 	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
@@ -476,19 +478,19 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
    for(int i = 0; i < pages; ++i){
       
       //wors if page numbers start from 0
-      if (fileHandle.readPage(i, pageData) != SUCCESS){
+      if (fileHandle.readPage(i, page_data) != SUCCESS){
 		return 1;
 	  }
 
       curr_rid.pageNum = i;
       slot_directory_header = getSlotDirectoryHeader(page_data);
 
-      for(int k = 0; k < slot_directory_header.recordEntriesNumber; ++k){
+      for(unsigned k = 0; k < slot_directory_header.recordEntriesNumber; ++k){
 
          curr_rid.slotNum = k;
-         entry = getSlotDirectoryEntry(page_data, k);
+         entry = getSlotDirectoryRecordEntry(page_data, k);
 
-         if (entry.status = Active){
+         if (entry.status == Active){
            
 	     	if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
 		    	return 1;
