@@ -469,3 +469,11 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     return -1;
     
 }
+
+RC RecordBasedFileManager::opCompare(void* in, CompOp op, void* cmpTo){
+    //TODO
+    
+    
+    
+}
+
