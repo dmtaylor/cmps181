@@ -394,40 +394,57 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 	return 0;
 }
 
+//Paolo Di Febbo's readAttribute() implementation
 RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data){
-    
-    void* readData = calloc(200, 1);
-    if(readData == NULL){
-        fprintf(stderr, "readAttribute: Error, malloc failed\n");
-        return 1;
-    }
-    if(readRecord(fileHandle, recordDescriptor, rid, readData) != SUCCESS){
-        fprintf(stderr,"readAttribute: unable to find record\n");
-        return 2;
-    }
-    int i;
-    int offset = 0;
-    int flag = 0;
-    for(i = 0; i<recordDescriptor.size(); i++){
-        if(attributeName.compare(recordDescriptor[i].name) == 0){
-            memcpy(data, (char*) readData + offset, recordDescriptor[i].length);
-            flag = 1;
-            break;
-        }
-        else{
-            offset += recordDescriptor[i].length;
-        }
-        
-    }
-    
-    if(!flag){
-        fprintf(stderr, "readAttribute: Error, attrubite name not found\n");
-        return 3;
-    }
-    
-    free(readData);
-    
-    return 0;
+    // Reading the full record data given its RID.
+	// I do not know how much the read record size will be, so I allocate the whole page size.
+	void * readRecordData = malloc(PAGE_SIZE);
+	if (readRecord(fileHandle, recordDescriptor, rid, readRecordData) != SUCCESS)
+		return 1;
+
+	// Reading the specific attribute.
+	unsigned offset = 0;
+	unsigned stringLength;
+	bool attributeFound = false;
+
+	for (unsigned i = 0; i < (unsigned) recordDescriptor.size() && !attributeFound; i++)
+	{
+		if (recordDescriptor[i].name.compare(attributeName) == 0)
+			attributeFound = true;
+
+		switch (recordDescriptor[i].type)
+		{
+			case TypeInt:
+				if (attributeFound)
+					memcpy(data, (char*) readRecordData + offset, INT_SIZE);
+				else
+					offset += INT_SIZE;
+				break;
+			case TypeReal:
+				if (attributeFound)
+					memcpy(data, (char*) readRecordData + offset, REAL_SIZE);
+				else
+					offset += REAL_SIZE;
+				break;
+			case TypeVarChar:
+				// We have to get the size of the string by reading the integer that precedes the string value itself.
+				memcpy(&stringLength, (char*) readRecordData + offset, VARCHAR_LENGTH_SIZE);
+				offset += VARCHAR_LENGTH_SIZE;
+
+				if (attributeFound)
+				{
+					memcpy(data, (char*) readRecordData + offset, stringLength);
+					// We also need to add the string terminator.
+					((char*) data)[stringLength] = '\0';
+				}
+				else
+					offset += stringLength;
+				break;
+		}
+	}
+
+	free(readRecordData);
+	return attributeFound ? 0 : 2;
 }
 
 RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
