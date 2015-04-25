@@ -464,8 +464,47 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     RBFM_ScanIterator &rbfm_ScanIterator)
 {
     
-    //TODO
+   //cycling through all records
+   int pages = fileHandle.getNumberOfPages();
+   void * page_data = malloc(PAGE_SIZE); 
+   void * readRecordData = malloc(PAGE_SIZE);
+   
+   SlotDirectoryHeader slot_directory_header;
+   SlotDirectoryRecordEntry entry; 
+   RID curr_rid;
+   
+   for(int i = 0; i < pages; ++i){
+      
+      //wors if page numbers start from 0
+      if (fileHandle.readPage(i, pageData) != SUCCESS){
+		return 1;
+	  }
+
+      curr_rid.pageNum = i;
+      slot_directory_header = getSlotDirectoryHeader(page_data);
+
+      for(int k = 0; k < slot_directory_header.recordEntriesNumber; ++k){
+
+         curr_rid.slotNum = k;
+         entry = getSlotDirectoryEntry(page_data, k);
+
+         if (entry.status = Active){
+           
+	     	if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
+		    	return 1;
+
+                      
+            //if ( optCompare() ) 
+
+
+
+         }
+
+      }      
+ 
+
+   }
     
-    return -1;
+    return 0;
     
 }
