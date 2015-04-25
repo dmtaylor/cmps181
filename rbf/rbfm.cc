@@ -510,3 +510,64 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     return 0;
     
 }
+
+unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, void* cmpTo){
+    //TODO
+    size_t size;
+    unsigned rc = 0;
+    int res;
+    if(type == TypeInt){
+        size = INT_SIZE;
+    }
+    else if(type == TypeReal){
+        size = REAL_SIZE;
+    }
+    else if(type == TypeVarChar){
+        size = PAGE_SIZE
+    }
+    else{
+        fprintf(stderr, "opCompare: invalid typing\n");
+        return 0;
+    }
+    
+    if(type == TypeInt || type == TypeReal){
+        res = memcmp(in, size, cmpTo);
+    }
+    else if(type == TypeVarChar){
+        res = strcmp((char*) in, (char*) cmpTo);
+    }
+    else{
+        fprintf(stderr, "opCompare: invalid type for args\n");
+        return 0;
+    }
+        
+    switch(op){
+        case EQ_OP:
+            if(res == 0) rc = 1;
+            break;
+        case LT_OP:
+            if(res < 0) rc = 1;
+            break;
+        case GT_OP:
+            if(res > 0) rc = 1;
+            break;
+        case LE_OP:
+            if(res <= 0) rc = 1;
+            break;
+        case GE_OP:
+            if(res >= 0) rc = 1;
+            break;
+        case NE_OP:
+            if(res != 0) rc = 1;
+            break;
+        case NO_OP:
+            rc = 1;
+            break;
+        default:
+            fprintf(stderr, "opCompare: invalid compOp\n");
+            return 0;
+    }
+    
+    return rc
+}
+
