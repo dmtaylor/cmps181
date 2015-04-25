@@ -100,6 +100,8 @@ The scan iterator is NOT required to be implemented for part 1 of the project
 
 
 class RBFM_ScanIterator {
+   vector<void *> scan_data; 
+   
 public:
   RBFM_ScanIterator() {};
   ~RBFM_ScanIterator() {};
@@ -153,7 +155,7 @@ IMPORTANT, PLEASE READ: All methods below this comment (other than the construct
 
   // scan returns an iterator to allow the caller to go through the results one by one. 
   RC scan(FileHandle &fileHandle,
-      const vector<Attribute> &recordDescriptor,
+      const vector<Attribute> &recordDescriptor, //every record in table has this format
       const string &conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
