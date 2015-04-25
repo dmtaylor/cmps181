@@ -190,7 +190,8 @@ private:
   unsigned getPageFreeSpaceSize(void * page);
   unsigned getRecordSize(const vector<Attribute> &recordDescriptor, const void *data);
   
-  unsigned opCompare(void* in, CompOp op, void* cmpTo);
+  // returns 1 if valid, 0 otherwise
+  unsigned opCompare(void* in, AttrType type, CompOp op, void* cmpTo);
 };
 
 #endif
