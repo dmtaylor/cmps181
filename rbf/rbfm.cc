@@ -450,15 +450,14 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 }
 
 RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
-    
-    //TODO
+        //TODO
     
     return -1;
     
 }
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle,
-    const vector<Attribute> &recordDescriptor,
+    vector<Attribute> recordDescriptor,
     const string &conditionAttribute,
     const CompOp compOp,                  // comparision type such as "<" and "="
     const void *value,                    // used in the comparison
@@ -474,13 +473,25 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
    SlotDirectoryHeader slot_directory_header;
    SlotDirectoryRecordEntry entry; 
    RID curr_rid;
+   AttrType attr_type;
    
+   //getting type of attribute... maybe move up?
+   vector<Attribute>::iterator attr_it = recordDescriptor.begin(); 
+   //auto attr_it = recordDescriptor.cbegin();
+   for ( ; attr_it != recordDescriptor.end(); ++attr_it){
+      if ((*attr_it).name == conditionAttribute){
+         attr_type = (*attr_it).type;
+         break;
+      }
+   }
+
+
    for(int i = 0; i < pages; ++i){
       
-      //wors if page numbers start from 0
+      //works if page numbers start from 0
       if (fileHandle.readPage(i, page_data) != SUCCESS){
-		return 1;
-	  }
+		     return 1;
+	    }
 
       curr_rid.pageNum = i;
       slot_directory_header = getSlotDirectoryHeader(page_data);
@@ -492,12 +503,17 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
 
          if (entry.status == Active){
            
-	     	if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
-		    	return 1;
+	     	    if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
+		    	    return 1;
 
-                      
-            //if ( optCompare() ) 
+         
+            //loads record into ScanIterator, if comparison returns 1, using project function
+            if ( opCompare(readRecordData, attr_type, compOp, value) == 1) 
+               rbfmProject(rbfm_ScanIterator, recordDescriptor, attributeNames, readRecordData, curr_rid);               
 
+                              
+			   }
+            
 
 
          }
@@ -505,14 +521,18 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
       }      
  
 
-   }
+   //}
     
     return 0;
     
 }
 
-unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, void* cmpTo){
-    //TODO
+
+
+//returns 1 if void* agrs pass comparison
+// i.e. ae part of the return set, if notreturns 0
+unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, const void* cmpTo){
+    
     size_t size;
     unsigned rc = 0;
     int res;
@@ -523,7 +543,7 @@ unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, v
         size = REAL_SIZE;
     }
     else if(type == TypeVarChar){
-        size = PAGE_SIZE
+        size = PAGE_SIZE;
     }
     else{
         fprintf(stderr, "opCompare: invalid typing\n");
@@ -531,7 +551,7 @@ unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, v
     }
     
     if(type == TypeInt || type == TypeReal){
-        res = memcmp(in, size, cmpTo);
+        res = memcmp(in, cmpTo, size);
     }
     else if(type == TypeVarChar){
         res = strcmp((char*) in, (char*) cmpTo);
@@ -568,6 +588,81 @@ unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, v
             return 0;
     }
     
-    return rc
+    return rc;
 }
+
+RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribute> recordDescriptor,
+                                       vector<string> projectedNames, void * record, const RID &rid) {
+
+   vector<Attribute>::iterator attr_it = recordDescriptor.begin();
+   vector<string>::iterator proj_it = projectedNames.begin();
+   void* projAttribute = malloc(PAGE_SIZE);
+   void* to_insert;
+   unsigned pattr_offset = 0;
+   unsigned attr_offset = 0;
+   unsigned varCharSize = 0;
+   unsigned attr_size;
+   
+   
+
+   for ( ; proj_it != projectedNames.end(); ++proj_it){
+      attr_offset = 0;
+
+      for(vector<Attribute>::iterator attr_it = recordDescriptor.begin();
+                           attr_it != recordDescriptor.end() ;++attr_it){
+        //Check if current record is next one in projected record.
+        if(strcmp((*attr_it).name.c_str(), (*proj_it).c_str()) == 0){
+          if((*attr_it).type == TypeInt){
+            attr_size = INT_SIZE;
+          }
+          else if((*attr_it).type == TypeReal){
+            attr_size = REAL_SIZE;
+          }
+          else if((*attr_it).type == TypeVarChar){
+            memcpy(&varCharSize, (char*) record + attr_offset, VARCHAR_LENGTH_SIZE);
+            attr_size = INT_SIZE + varCharSize;
+          }
+          else{
+            fprintf(stderr, "rbfmProject: unknown type found\n");
+            return 1;
+          }
+          memcpy((char*) projAttribute + pattr_offset, (char*)record + attr_offset, attr_size);
+          pattr_offset += attr_size;
+          break;
+          
+        }
+        if((*attr_it).type == TypeInt){
+          attr_offset += INT_SIZE;
+          
+        }
+        else if((*attr_it).type == TypeReal){
+          attr_offset += REAL_SIZE;
+        }
+        else if((*attr_it).type == TypeVarChar){
+          memcpy(&varCharSize, (char*) record + attr_offset, VARCHAR_LENGTH_SIZE);
+          attr_offset += INT_SIZE + varCharSize;
+        }
+        else{
+          fprintf(stderr, "rbfmProject: unknown type\n");
+          return 1;
+        }
+        
+
+      }
+
+   }
+
+   //Format for insertion into scan iterator
+   to_insert = malloc(pattr_offset);
+   memcpy(to_insert, projAttribute, pattr_offset);
+   free(projAttribute);
+   
+   scan_it.records.push_back(to_insert);
+   scan_it.sizes.push_back(pattr_offset);
+   scan_it.rids.push_back(rid);
+
+   return 0;
+}
+
+
 

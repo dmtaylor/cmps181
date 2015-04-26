@@ -99,8 +99,12 @@ The scan iterator is NOT required to be implemented for part 1 of the project
 
 
 class RBFM_ScanIterator {
-   vector<void *> scan_data; 
-   
+
+   friend class RecordBasedFileManager;
+   vector<void *> records; 
+   vector<RID> rids;
+   vector<unsigned> sizes;
+
 public:
   RBFM_ScanIterator() {};
   ~RBFM_ScanIterator() {};
@@ -154,7 +158,7 @@ IMPORTANT, PLEASE READ: All methods below this comment (other than the construct
 
   // scan returns an iterator to allow the caller to go through the results one by one. 
   RC scan(FileHandle &fileHandle,
-      const vector<Attribute> &recordDescriptor, //every record in table has this format
+      vector<Attribute> recordDescriptor, //every record in table has this format
       const string &conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
@@ -190,7 +194,9 @@ private:
   unsigned getRecordSize(const vector<Attribute> &recordDescriptor, const void *data);
   
   // returns 1 if valid, 0 otherwise
-  unsigned opCompare(void* in, AttrType type, CompOp op, void* cmpTo);
+  unsigned opCompare(void* in, AttrType type, CompOp op, const void* cmpTo);
+  
+  RC rbfmProject(RBFM_ScanIterator scan_it, vector<Attribute> recordDescriptor, vector<string> projectedNames, void * record, const RID &rid); 
 };
 
 #endif
