@@ -449,8 +449,21 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 	return attributeFound ? 0 : 2;
 }
 
-RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
+// Reorganizes page to get more space
+RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
+          const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
         //TODO
+    
+    void* pageData = malloc(PAGE_SIZE);
+    if (fileHandle.readPage(pageNumber, pageData) != SUCCESS){
+		return 1;
+	}
+    SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
+    
+    
+    
+    
+    
     
     return -1;
     
