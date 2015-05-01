@@ -105,13 +105,18 @@ class RBFM_ScanIterator {
    vector<RID> rids;
    vector<unsigned> sizes;
 
+   //**might cause problems
+   unsigned position;
+   
+
 public:
   RBFM_ScanIterator() {};
   ~RBFM_ScanIterator() {};
 
   // "data" follows the same format as RecordBasedFileManager::insertRecord()
-  RC getNextRecord(RID &rid, void *data) { return RBFM_EOF; };
-  RC close() { return -1; };
+  RC getNextRecord(RID &rid, void *data);
+  RC close();
+
 };
 
 

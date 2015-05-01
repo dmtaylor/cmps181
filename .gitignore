@@ -1,5 +1,7 @@
 *.o
 *.pdf
 *~
+*.a
+rbf/rbftest
 makefile.inc
 

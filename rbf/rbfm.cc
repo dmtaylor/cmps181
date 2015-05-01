@@ -449,7 +449,9 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 	return attributeFound ? 0 : 2;
 }
 
+// ReachGoal: our attempt at regorganize page
 // Reorganizes page to get more space
+/*
 RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
           const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
         //TODO
@@ -457,17 +459,24 @@ RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
     void* pageData = malloc(PAGE_SIZE);
     if (fileHandle.readPage(pageNumber, pageData) != SUCCESS){
 		return 1;
-	}
+    }
+
     SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
     
+    for(unsigned k = 0; k < slotHeader.recordEntriesNumber; ++k){
+
+
+
+  
     
-    
-    
+    }  
     
     
     return -1;
     
 }
+*/
+
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     vector<Attribute> recordDescriptor,
@@ -478,7 +487,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     RBFM_ScanIterator &rbfm_ScanIterator)
 {
     
-   //cycling through all records
+   rbfm_ScanIterator.position = 0;
    int pages = fileHandle.getNumberOfPages();
    void * page_data = malloc(PAGE_SIZE); 
    void * readRecordData = malloc(PAGE_SIZE);
@@ -498,7 +507,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
       }
    }
 
-
+   //cycling through all pages in file
    for(int i = 0; i < pages; ++i){
       
       //works if page numbers start from 0
@@ -509,6 +518,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
       curr_rid.pageNum = i;
       slot_directory_header = getSlotDirectoryHeader(page_data);
 
+      //cycling through all records on page
       for(unsigned k = 0; k < slot_directory_header.recordEntriesNumber; ++k){
 
          curr_rid.slotNum = k;
@@ -677,5 +687,21 @@ RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribu
    return 0;
 }
 
+RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) { 
+	if(position == records.size()) return RBFM_EOF; 
+	else {
+		rid = rids[position]; 
+		memcpy(data, records[position], sizes[position]);
+	} 
+	++position; 
+	return 0;   
+};
 
+RC RBFM_ScanIterator::close(){
+   for(unsigned i = 0; i < records.size(); ++i){
+      free(records[i]);
+   }
+   delete this;
+   return 0;
+}
 
