@@ -88,6 +88,12 @@ protected:
 
 private:
   static RelationManager *_rm;
+  static RecordBasedFileManager *_rbf_manager;
+  // catalog file name information
+  static const string tableTableFileName;
+  static const string tableTableName;
+  static const string columnTableName;
+  static const string columnTableFileName;
 };
 
 #endif

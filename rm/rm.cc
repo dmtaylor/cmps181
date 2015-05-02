@@ -13,17 +13,48 @@
 #include "rm.h"
 
 RelationManager* RelationManager::_rm = 0;
+const string RelationManager::tableTableFileName = "sys_table.table";
+const string RelationManager::tableTableName = "cat_table";
+const string RelationManager::columnTableName = "cat_cols";
+const string RelationManager::columnTableFileName = "sys_cols.table";
 
 RelationManager* RelationManager::instance()
 {
     if(!_rm)
         _rm = new RelationManager();
-
+        FileHandle tableHandle;
+        fileHandle colHandle;
+        // If table catalog not found, create the catalog
+        if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
+            if(_rbf_manager->createFile(tabletableFileName) != SUCCESS){
+                fprintf(stderr, "Error: could not create table catalog\n");
+                return 0;
+            }
+            // insert table info here
+            
+            //TODO
+            
+            
+        }
+        // if column catalog not found, create it here
+        if(_rbf_manager->openFile(columnTableFileName, colHandle) != SUCCESS){
+            if(_rbf_manager->createFile(columntableFileName) != SUCCESS){
+                fprintf(stderr, "Error: could not create column catalog\n");
+                return 0;
+            }
+            // insert column info here
+            
+            //TODO
+            
+            
+        }
     return _rm;
 }
 
 RelationManager::RelationManager()
 {
+    // initialize the internal RBFM
+    _rbf_manager = RecordBasedFileManager::instance();
 }
 
 RelationManager::~RelationManager()
