@@ -92,8 +92,10 @@ private:
   // catalog file name information
   static const string tableTableFileName;
   static const string tableTableName;
+  static const unsigned tableTableId;
   static const string columnTableName;
   static const string columnTableFileName;
+  static const unsigned columnTableId;
 };
 
 #endif

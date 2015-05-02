@@ -15,8 +15,10 @@
 RelationManager* RelationManager::_rm = 0;
 const string RelationManager::tableTableFileName = "sys_table.table";
 const string RelationManager::tableTableName = "cat_table";
+const unsigned RelationManager::tableTableId = 0;
 const string RelationManager::columnTableName = "cat_cols";
 const string RelationManager::columnTableFileName = "sys_cols.table";
+const unsigned RelationManager::columnTableId = 1;
 
 RelationManager* RelationManager::instance()
 {
@@ -37,6 +39,40 @@ RelationManager* RelationManager::instance()
                 fprintf(stderr, "Error: could not open table catalog\n");
                 return 0;
             }
+            // create the attribute list
+            Attribute tableId;
+            Attribute tableName;
+            Attribute tableFName;
+            
+            tableId.name = "tableId";
+            tableId.type = TypeInt;
+            tableId.length = INT_SIZE;
+            
+            tableName.name = "tableName";
+            tableName.type = TypeVarChar;
+            tableName.length = VARCHAR_LENGTH_SIZE;
+            
+            tableFName.name = "tableFileName";
+            tableFName.type = TypeVarChar;
+            tableFName.length = VARCHAR_LENGTH_SIZE;
+            
+            vector<Attribute> tableAttributes = {tableId, tableName, tableFName};
+            
+            unsigned tableNameLength = tableTableName.length();
+            unsigned tableFilenameLength = tableTableFileName.length();
+            
+            //create the record to be inserted.
+            char* tableData = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
+                tableNameLength + VARCHAR_LENGTH_SIZE + tableFilenameLength ,1);
+            
+            // populate the table    
+            memcpy(tableData[0], &tableTableId, INT_SIZE);
+            memcpy(tableData[INT_SIZE], &tableNameLength, VARCHAR_LENGTH_SIZE);
+            tableTableFileName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE],
+                tableNameLength, 0);
+            memcpy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE+tableNameLength],
+                &tableFilenameLength, VARCHAR_LENGTH_SIZE);
+            
             
             
             
