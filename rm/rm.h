@@ -93,9 +93,12 @@ private:
   static const string tableTableFileName;
   static const string tableTableName;
   static const unsigned tableTableId;
+  static vector<Attribute> tableDescriptor;
+  
   static const string columnTableName;
   static const string columnTableFileName;
   static const unsigned columnTableId;
+  static vector<Attribute> columnDescriptor;
 };
 
 #endif
