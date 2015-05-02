@@ -104,6 +104,8 @@ RelationManager* RelationManager::instance()
                 
             _rbf_manager->insertRecord(tableHandle, tableDescriptor,
                 (void*)tableData, &tableRID);
+                
+            free(tableData);
             
             
             
@@ -122,6 +124,39 @@ RelationManager* RelationManager::instance()
                 fprintf(stderr, "Error: could not open column catalog\n");
                 return 0;
             }
+            
+            RID colTabRID;
+            
+            unsigned colNameLength = columnTableName.length();
+            unsigned colFNameLength = columnTableFileName.length();
+            
+            char* tableData = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
+                colNameLength + VARCHAR_LENGTH_SIZE + colFNameLength ,1);
+            
+            memcpy(tableData[0], &columnTableId, INT_SIZE);
+            memcpy(tableData[INT_SIZE], &columnNameLength, VARCHAR_LENGTH_SIZE);
+            columnTableName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE],
+                columnNameLength, 0);
+            memcpy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE+columnNameLength],
+                &colFNameLength, VARCHAR_LENGTH_SIZE);
+                
+            columnTableFileName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE+
+                colNameLength + VARCHAR_LENGTH_SIZE], colFNameLength, 0);
+                
+            _rbf_manager->insertRecord(tableHandle, tableDescriptor,
+                (void*)tableData, &colTabRID);
+                
+            free(tableData);
+            
+            //add column entries for the table table and itself
+            int i;
+            int strSize;
+            for(i=0; i<tableDescriptor.size(); ++i){
+                
+                
+                
+            }
+            
             
             
             
