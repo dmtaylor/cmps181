@@ -16,49 +16,10 @@ RelationManager* RelationManager::_rm = 0;
 const string RelationManager::tableTableFileName = "sys_table.table";
 const string RelationManager::tableTableName = "cat_table";
 const unsigned RelationManager::tableTableId = 0;
-Attribute tableId;
-Attribute tableName;
-Attribute tableFName;
-
-tableId.name = "tableId";
-tableId.type = TypeInt;
-tableId.length = INT_SIZE;
-
-tableName.name = "tableName";
-tableName.type = TypeVarChar;
-tableName.length = VARCHAR_LENGTH_SIZE;
-
-tableFName.name = "tableFileName";
-tableFName.type = TypeVarChar;
-tableFName.length = VARCHAR_LENGTH_SIZE;
-
-RelationManager::tableDescriptor = {tableId, tableName, tableFName};
 
 const string RelationManager::columnTableName = "cat_cols";
 const string RelationManager::columnTableFileName = "sys_cols.table";
 const unsigned RelationManager::columnTableId = 1;
-Attribute colId;
-Attribute colName;
-Attribute colType;
-Attribute colLength;
-
-colId.name = "tableId";
-colId.type = TypeInt;
-colId.length = INT_SIZE;
-
-colName.name = "columnName";
-colName.type = TypeVarChar;
-colName.length = VARCHAR_LENGTH_SIZE;
-
-colType.name = "columnType";
-colType.type = TypeInt;
-colId.length = INT_SIZE;
-
-colLength.name = "columnLength";
-colLength.type = TypeInt;
-colLength.length = INT_SIZE;
-
-RelationManager::columnDescriptor = {colId, colName, colType, colLength};
 
 
 RelationManager* RelationManager::instance()
@@ -67,6 +28,49 @@ RelationManager* RelationManager::instance()
         _rm = new RelationManager();
         FileHandle tableHandle;
         fileHandle colHandle;
+        
+        Attribute tableId;
+        Attribute tableName;
+        Attribute tableFName;
+
+        tableId.name = "tableId";
+        tableId.type = TypeInt;
+        tableId.length = INT_SIZE;
+
+        tableName.name = "tableName";
+        tableName.type = TypeVarChar;
+        tableName.length = VARCHAR_LENGTH_SIZE;
+
+        tableFName.name = "tableFileName";
+        tableFName.type = TypeVarChar;
+        tableFName.length = VARCHAR_LENGTH_SIZE;
+
+        RelationManager::tableDescriptor = {tableId, tableName, tableFName};
+        
+        Attribute colId;
+        Attribute colName;
+        Attribute colType;
+        Attribute colLength;
+
+        colId.name = "tableId";
+        colId.type = TypeInt;
+        colId.length = INT_SIZE;
+
+        colName.name = "columnName";
+        colName.type = TypeVarChar;
+        colName.length = VARCHAR_LENGTH_SIZE;
+
+        colType.name = "columnType";
+        colType.type = TypeInt;
+        colId.length = INT_SIZE;
+
+        colLength.name = "columnLength";
+        colLength.type = TypeInt;
+        colLength.length = INT_SIZE;
+
+        RelationManager::columnDescriptor = {colId, colName, colType, colLength};
+
+
         
         // If table catalog not found, create the catalog
         if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
