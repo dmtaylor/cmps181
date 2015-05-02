@@ -16,6 +16,9 @@
 
 #include <string>
 #include <vector>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "../rbf/rbfm.h"
 
