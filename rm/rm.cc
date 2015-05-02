@@ -16,9 +16,50 @@ RelationManager* RelationManager::_rm = 0;
 const string RelationManager::tableTableFileName = "sys_table.table";
 const string RelationManager::tableTableName = "cat_table";
 const unsigned RelationManager::tableTableId = 0;
+Attribute tableId;
+Attribute tableName;
+Attribute tableFName;
+
+tableId.name = "tableId";
+tableId.type = TypeInt;
+tableId.length = INT_SIZE;
+
+tableName.name = "tableName";
+tableName.type = TypeVarChar;
+tableName.length = VARCHAR_LENGTH_SIZE;
+
+tableFName.name = "tableFileName";
+tableFName.type = TypeVarChar;
+tableFName.length = VARCHAR_LENGTH_SIZE;
+
+RelationManager::tableDescriptor = {tableId, tableName, tableFName};
+
 const string RelationManager::columnTableName = "cat_cols";
 const string RelationManager::columnTableFileName = "sys_cols.table";
 const unsigned RelationManager::columnTableId = 1;
+Attribute colId;
+Attribute colName;
+Attribute colType;
+Attribute colLength;
+
+colId.name = "tableId";
+colId.type = TypeInt;
+colId.length = INT_SIZE;
+
+colName.name = "columnName";
+colName.type = TypeVarChar;
+colName.length = VARCHAR_LENGTH_SIZE;
+
+colType.name = "columnType";
+colType.type = TypeInt;
+colId.length = INT_SIZE;
+
+colLength.name = "columnLength";
+colLength.type = TypeInt;
+colLength.length = INT_SIZE;
+
+RelationManager::columnDescriptor = {colId, colName, colType, colLength};
+
 
 RelationManager* RelationManager::instance()
 {
@@ -26,6 +67,7 @@ RelationManager* RelationManager::instance()
         _rm = new RelationManager();
         FileHandle tableHandle;
         fileHandle colHandle;
+        
         // If table catalog not found, create the catalog
         if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
             if(_rbf_manager->createFile(tabletableFileName) != SUCCESS){
@@ -34,29 +76,13 @@ RelationManager* RelationManager::instance()
             }
             // insert table info here
             
-            //TODO
             if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open table catalog\n");
                 return 0;
             }
-            // create the attribute list
-            Attribute tableId;
-            Attribute tableName;
-            Attribute tableFName;
             
-            tableId.name = "tableId";
-            tableId.type = TypeInt;
-            tableId.length = INT_SIZE;
             
-            tableName.name = "tableName";
-            tableName.type = TypeVarChar;
-            tableName.length = VARCHAR_LENGTH_SIZE;
-            
-            tableFName.name = "tableFileName";
-            tableFName.type = TypeVarChar;
-            tableFName.length = VARCHAR_LENGTH_SIZE;
-            
-            vector<Attribute> tableAttributes = {tableId, tableName, tableFName};
+            RID tableRID;
             
             unsigned tableNameLength = tableTableName.length();
             unsigned tableFilenameLength = tableTableFileName.length();
@@ -68,11 +94,16 @@ RelationManager* RelationManager::instance()
             // populate the table    
             memcpy(tableData[0], &tableTableId, INT_SIZE);
             memcpy(tableData[INT_SIZE], &tableNameLength, VARCHAR_LENGTH_SIZE);
-            tableTableFileName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE],
+            tableTableName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE],
                 tableNameLength, 0);
             memcpy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE+tableNameLength],
                 &tableFilenameLength, VARCHAR_LENGTH_SIZE);
-            
+                
+            tableTableFileName.copy(tableData[INT_SIZE+VARCHAR_LENGTH_SIZE+
+                tableNameLength + VARCHAR_LENGTH_SIZE], tableFilenameLength, 0);
+                
+            _rbf_manager->insertRecord(tableHandle, tableDescriptor,
+                (void*)tableData, &tableRID);
             
             
             
@@ -91,6 +122,8 @@ RelationManager* RelationManager::instance()
                 fprintf(stderr, "Error: could not open column catalog\n");
                 return 0;
             }
+            
+            
             
             
         }
