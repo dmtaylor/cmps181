@@ -33,6 +33,11 @@ RelationManager* RelationManager::instance()
             // insert table info here
             
             //TODO
+            if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
+                fprintf(stderr, "Error: could not open table catalog\n");
+                return 0;
+            }
+            
             
             
         }
@@ -45,6 +50,11 @@ RelationManager* RelationManager::instance()
             // insert column info here
             
             //TODO
+            
+            if(_rbf_manager->openFile(columnTableFileName, colHandle) != SUCCESS){
+                fprintf(stderr, "Error: could not open column catalog\n");
+                return 0;
+            }
             
             
         }
