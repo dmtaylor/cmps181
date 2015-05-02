@@ -192,7 +192,21 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
 {
-    return -1;
+	FileHandle tableHandle;
+
+	if(_rbf_manager->openFile(tableTableFileName, tableHandle)!= success){
+		fprintf(stderr, "Error: could not open column catalog\n");
+		return 0;
+	}	
+
+    vector<string> projAttributes;
+    projAttributes.push_back("tableFileName"); projAttributes
+
+    //scan tableTableFileName for FileName and TableID
+	RBFM_ScanIterator scanIterator = new RBFM_ScanIterator(); 
+	_rbf_manager->scan(tableTableFileName, tableDescriptor, tableTableName, 
+                       EQ_OP, (void *) tableName, projAttributes ,scanIterator);
+
 }
 
 RC RelationManager::deleteTuples(const string &tableName)
