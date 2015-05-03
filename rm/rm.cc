@@ -277,7 +277,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 	//getting tableID.
     void * tableID = malloc(INT_SIZE);
-    memcpy(&tableID, ScanIterator.records[0], INT_SIZE);  
+    memcpy(&tableID, scanIterator.records[0], INT_SIZE);  
     //getting size of FName
     void * FNameSize = malloc(VARCHAR_LENGTH_SIZE);
     memcpy(&FNameSize, ScanIterator.records[0] + INT_SIZE, VARCHAR_LENGTH_SIZE);    
@@ -305,16 +305,16 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
         void * attrNameSize = malloc(VARCHAR_LENGTH_SIZE);
         memcpy(attrNameSize, colScanIterator.records[i], VARCHAR_LENGTH_SIZE);
         void * attrName = malloc(*(int *)attrNameSize);
-		memcpy(&attrName, colScanIterator.records[i]+ VARCHAR_LENGTH_SIZE, attrNameSize);
+		memcpy(&attrName, colScanIterator->records[i]+ VARCHAR_LENGTH_SIZE, attrNameSize);
 
-        curr.name = (string)attrName;
+        curr.name = (char *)attrName;
 
         void * attrType = malloc(INT_SIZE);
-        memcpy(&attrType, colScanIterator[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize, INT_SIZE); 
+        memcpy(&attrType, colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize, INT_SIZE); 
         curr.type = *(int *)attrType;
 
         void * attrLength = malloc(INT_SIZE);
-		memcpy(&attrLength, colScanIterator[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize + INT_SIZE, INT_SIZE);        
+		memcpy(&attrLength, colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize + INT_SIZE, INT_SIZE);        
         curr.length = *(int *)attrLength;
   
         descriptor.push_back(curr);
@@ -322,7 +322,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     
 	//open FileName and insert using RBFM
     FileHandle insertHandle;	
-    if(_rbf_manager->openFile(tableFName,insertHandle) != SUCCESS)
+    if(_rbf_manager->openFile((char *)tableFName,insertHandle) != SUCCESS)
 		fprintf(stderr, "Error: RM::insertTuple: can't open tableFName");
 
 	//RC insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid)
@@ -331,20 +331,55 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 }
 
+//RC openFile(const string &fileName, FileHandle &fileHandle)
+//RC deleteRecords(FileHandle &fileHandle);
 RC RelationManager::deleteTuples(const string &tableName)
 {
+
     FileHandle tableCatalogHandle;
     
     //opening tables  table
-	if(_rbf_manager->openFile(tableTableName, tableHandle)!= SUCCESS){
-		fprintf(stderr, "Error: could not open column catalog\n");
+	if(_rbf_manager->openFile(tableTableName, tableCatalogHandle)!= SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuples() could not open column catalog\n");
 		return 0;
 	}
     
+	vector<string> projAttributes;
+	projAttributes.push_back("tableFName");
+
+    //scan tableTableFileName for tableName to get tableFName
+	RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
+	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+                       EQ_OP, &tableName, projAttributes , *scanIterator);
+
+	//close catalog file
+
+    void * tableFileNameSize = malloc(VARCHAR_LENGTH_SIZE);
+	memcpy(&tableFileNameSize, scanIterator->records[0], VARCHAR_LENGTH_SIZE);
+    void * tableFileName = malloc (*(int *)tableFileNameSize);
+    memcpy(&tableFileName, scanIterator->records[0] + VARCHAR_LENGTH_SIZE, *(int *)tableFileNameSize);
     
+    FileHandle tableHandle; 
+    if( _rbf_manager->openFile((char *)tableFileName, tableHandle) != SUCCESS ){
+		fprintf(stderr, "Error: RM-deleteTuples() could not open table file\n");
+		return 0;
+
+	}
+
+	if (_rbf_manager->deleteRecords(tableHandle) != SUCCESS){
+    	fprintf(stderr, "Error: RM-deleteTuples() deleteRecords(tableHandle) failed\n");
+		return 0;
     
+	}
+	
+	//close file handle 	
+
+    return 0;
+
 }
 
+
+//RC deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid);
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 {
     return -1;
@@ -357,6 +392,7 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
+/*
     FileHandle tableCatalogHandle;
     
     if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
@@ -364,6 +400,8 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
         
         
     }
+*/ 
+	return -1;
 }
 
 RC RelationManager::readAttribute(const string &tableName, const RID &rid, const string &attributeName, void *data)
