@@ -440,7 +440,32 @@ RC RelationManager::deleteTuples(const string &tableName){
 //RC deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid);
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 {
-    return -1;
+    vector<Attribute> descriptor;
+    string tableFileName;
+
+    if(getFileInfo(tableName, tableFileName, descriptor)!= SUCCESS){
+		fprintf(stderr, "RM: deleteTuple(): Could not get file info");
+		return 1;
+	}
+
+	FileHandle tableHandle;
+	
+	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+		fprintf(stderr, "RM: deleteTuple(): openFile(tableFileName) failed");
+		return 1;
+	}
+
+	if(_rbf_manager->deleteRecord(tableHandle, descriptor, rid) != SUCCESS){
+		fprintf(stderr, "RM: deleteTuple(): deleteRecord(tableFileName) failed");
+		return 1;
+	}
+	
+	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuple() closeFile(tableHandle) failed \n");
+		return 1;
+	}
+	return 0;
+
 }
 
 RC RelationManager::updateTuple(const string &tableName, const void *data, const RID &rid)
