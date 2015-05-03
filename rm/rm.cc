@@ -352,15 +352,29 @@ RC RelationManager::deleteTuples(const string &tableName)
 	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
                        EQ_OP, &tableName, projAttributes , *scanIterator);
 
+
+    RID currRid; 
+    void * currRecord; 
+	scanIterator->getNextRecord(currRid, currRecord);
+
 	//close catalog file
 
+    char * FName;
+    unsigned FNameSize;
+
+    memcpy(&FNameSize, currRecord, VARCHAR_LENGTH_SIZE);
+    FName = (char *)calloc(FNameSize, 1);
+    memcpy(FName, currRecord + VARCHAR_LENGTH_SIZE, FNameSize);
+
+    string FName_s = FName;
+/*
     void * tableFileNameSize = malloc(VARCHAR_LENGTH_SIZE);
 	memcpy(&tableFileNameSize, scanIterator->records[0], VARCHAR_LENGTH_SIZE);
     void * tableFileName = malloc (*(int *)tableFileNameSize);
     memcpy(&tableFileName, scanIterator->records[0] + VARCHAR_LENGTH_SIZE, *(int *)tableFileNameSize);
-    
+ */   
     FileHandle tableHandle; 
-    if( _rbf_manager->openFile((char *)tableFileName, tableHandle) != SUCCESS ){
+    if( _rbf_manager->openFile(FName_s, tableHandle) != SUCCESS ){
 		fprintf(stderr, "Error: RM-deleteTuples() could not open table file\n");
 		return 0;
 
@@ -369,9 +383,10 @@ RC RelationManager::deleteTuples(const string &tableName)
 	if (_rbf_manager->deleteRecords(tableHandle) != SUCCESS){
     	fprintf(stderr, "Error: RM-deleteTuples() deleteRecords(tableHandle) failed\n");
 		return 0;
-    
 	}
 	
+	
+	//close scan iterator
 	//close file handle 	
 
     return 0;
