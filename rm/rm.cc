@@ -231,7 +231,26 @@ RelationManager::~RelationManager()
 
 RC RelationManager::createTable(const string &tableName, const vector<Attribute> &attrs)
 {
-    return -1;
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
+    string resStr;
+    vector<Attribute> resAttrs;
+    if(getFileInfo(tableName, resStr, resAttrs) == SUCCESS){
+        fprintf(stderr, "RelationManager: table %s already exists.\n", tableName.c_str());
+        return 2;
+    }
+    
+    string fileName = "usr_" + tableName + ".table";
+    unsigned tableId = getValidCatalogId();
+    
+    //TODO: create the RB file
+    
+    //TODO: insert entry in catalog
+    
+    return 1;
 }
 
 RC RelationManager::deleteTable(const string &tableName)
@@ -241,7 +260,14 @@ RC RelationManager::deleteTable(const string &tableName)
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
 {
-    return -1;
+    string fileName;
+    vector<Attribute> getAttrs;
+    if(getFileInfo(tableName, fileName, getAttrs) != SUCCESS){
+        fprintf(stderr, "RelationManager: table %s not found\n", tableName);
+        return 1;
+    }
+    attrs = getAttrs;
+    return 0;
 }
 
 //RelationManager::tableDescriptor = {tableId, tableName, tableFName};
@@ -750,4 +776,37 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     
 
 	return 0;
+}
+
+unsigned RelationManager::getValidCatalogID(){
+    unsigned newId=1;
+    
+    FileHandle tableCatalogHandle;
+    
+    if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
+        fprintf(stderr, "RM: could not open file catalog\n");
+        return 1;
+    }
+    
+    // Get table information from catalog
+    vector<string> projAttributes;
+	projAttributes.push_back("tableID");
+    RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
+	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+                       NO_OP, &tableTableName, projAttributes , *scanIterator);
+                       
+    void* recordData = calloc(INT_SIZE, 1);
+    unsigned currId;
+    RID nullRid;
+    while(scanIterator->getNextRecord(nullRid, recordData) != RBFM_EOF){
+        memcpy(&currId, recordData, INT_SIZE);
+        if(currId > newId){
+            newId = currId;
+        }
+    }
+    
+    scanIterator->close();
+    free(recordData);
+    
+    return newId +1;
 }
