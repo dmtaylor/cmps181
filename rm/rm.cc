@@ -331,8 +331,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 }
 
-//RC openFile(const string &fileName, FileHandle &fileHandle)
-//RC deleteRecords(FileHandle &fileHandle);
+/*
 RC RelationManager::deleteTuples(const string &tableName)
 {
 
@@ -367,12 +366,12 @@ RC RelationManager::deleteTuples(const string &tableName)
     memcpy(FName, currRecord + VARCHAR_LENGTH_SIZE, FNameSize);
 
     string FName_s = FName;
-/*
+
     void * tableFileNameSize = malloc(VARCHAR_LENGTH_SIZE);
 	memcpy(&tableFileNameSize, scanIterator->records[0], VARCHAR_LENGTH_SIZE);
     void * tableFileName = malloc (*(int *)tableFileNameSize);
     memcpy(&tableFileName, scanIterator->records[0] + VARCHAR_LENGTH_SIZE, *(int *)tableFileNameSize);
- */   
+ 
     FileHandle tableHandle; 
     if( _rbf_manager->openFile(FName_s, tableHandle) != SUCCESS ){
 		fprintf(stderr, "Error: RM-deleteTuples() could not open table file\n");
@@ -390,9 +389,37 @@ RC RelationManager::deleteTuples(const string &tableName)
 	//close file handle 	
 
     return 0;
-
 }
+*/
 
+
+//RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor)
+//RC openFile(const string &fileName, FileHandle &fileHandle)
+//RC deleteRecords(FileHandle &fileHandle);
+RC RelationManager::deleteTuples(const string &tableName){
+
+	vector<Attribute> descriptor;
+    string tableFileName;
+
+    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS)
+		return 1;
+
+    FileHandle tableHandle;
+	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuples() Can't open FILE: tableFileName\n");
+		return 1;
+	}
+	if(_rbf_manager->deleteRecords(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuples() deleteRecords(tableHandle) failed \n");
+		return 1;
+	}
+	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuples() closeFile(tableHandle) failed \n");
+		return 1;
+	}
+
+	return 0;	
+}
 
 //RC deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid);
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
