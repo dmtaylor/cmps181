@@ -248,7 +248,7 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
 {
-    //for cat_tables
+    /*//for cat_tables
 	FileHandle tableHandle;
     FileHandle columnHandle;
 
@@ -327,8 +327,24 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 	//RC insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid)
     if(_rbf_manager->insertRecord(insertHandle, descriptor, data, rid) != SUCCESS)
-	return 0;
-
+	return 0;*/
+    
+    string fileName;
+    vector<Attribute> descriptor;
+    getFileInfo(tableName, fileName, descriptor);
+    
+    FileHandle tableHandle;
+    if(_rbf_manager->openFile(fileName) != SUCCESS){
+        fprintf(stderr, "RelationManager: could not open table file\n");
+        return 1;
+    }
+    
+    if(_rbf_manager->insertRecord(tableHandle, descriptor, data, rid) != SUCCESS){
+        fprintf(stderr, "RelationManager: tuple insert failed\n");
+        return 2;
+    }
+    
+    return 0;
 }
 
 //RC openFile(const string &fileName, FileHandle &fileHandle)
@@ -556,7 +572,10 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 	void* recordName;
     RID nullRid;
     
-    scanIterator->getNextRecord(nullRid, recordName);
+    if(scanIterator->getNextRecord(nullRid, recordName) == RBFM_EOF){
+        fprintf(stderr, "RelationManager: table %s not found\n", tableName.c_str());
+        return 2;
+    }
     
     unsigned nameSize;
     unsigned tableId;
