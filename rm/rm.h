@@ -103,7 +103,7 @@ private:
   static const unsigned columnTableId;
   static vector<Attribute> columnDescriptor;
   
-  RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> descriptor);
+  RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor);
 };
 
 #endif
