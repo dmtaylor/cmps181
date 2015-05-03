@@ -491,13 +491,14 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
    int pages = fileHandle.getNumberOfPages();
    void * page_data = malloc(PAGE_SIZE); 
    void * readRecordData = malloc(PAGE_SIZE);
-   
+   void * readAttributeData = calloc(PAGE_SIZE, 1);   
+
    SlotDirectoryHeader slot_directory_header;
    SlotDirectoryRecordEntry entry; 
    RID curr_rid;
    AttrType attr_type;
    
-   //getting type of attribute... maybe move up?
+   //getting type of condition type
    vector<Attribute>::iterator attr_it = recordDescriptor.begin(); 
    //auto attr_it = recordDescriptor.cbegin();
    for ( ; attr_it != recordDescriptor.end(); ++attr_it){
@@ -513,7 +514,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
       //works if page numbers start from 0
       if (fileHandle.readPage(i, page_data) != SUCCESS){
 		     return 1;
-	    }
+      }
 
       curr_rid.pageNum = i;
       slot_directory_header = getSlotDirectoryHeader(page_data);
@@ -526,27 +527,23 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
 
          if (entry.status == Active){
            
-	     	    if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
-		    	    return 1;
+	    if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
+	       return 1;
 
-         
+            if (readAttribute(fileHandle, recordDescriptor, curr_rid, conditionAttribute, readAttributeData) != SUCCESS)
+	       return 1;            
+
             //loads record into ScanIterator, if comparison returns 1, using project function
-            if ( opCompare(readRecordData, attr_type, compOp, value) == 1) 
+            if ( opCompare(readAttributeData, attr_type, compOp, value) == 1) 
                rbfmProject(rbfm_ScanIterator, recordDescriptor, attributeNames, readRecordData, curr_rid);               
 
                               
-			   }
-            
-
-
          }
-
-      }      
- 
-
-   //}
-    
-    return 0;
+      }
+   }      
+   free(readRecordData); 
+   free(page_data);
+   return 0;
     
 }
 
@@ -654,6 +651,7 @@ RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribu
           break;
           
         }
+
         if((*attr_it).type == TypeInt){
           attr_offset += INT_SIZE;
           
