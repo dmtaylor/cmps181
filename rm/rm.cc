@@ -334,7 +334,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     getFileInfo(tableName, fileName, descriptor);
     
     FileHandle tableHandle;
-    if(_rbf_manager->openFile(fileName) != SUCCESS){
+    if(_rbf_manager->openFile(fileName, tableHandle) != SUCCESS){
         fprintf(stderr, "RelationManager: could not open table file\n");
         return 1;
     }
