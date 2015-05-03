@@ -477,7 +477,7 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
 
-    FileHandle tableCatalogHandle;
+    /*FileHandle tableCatalogHandle;
     
     if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open file catalog\n");
@@ -551,13 +551,20 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     }
 
     scanIterator->close();
-    _rbf_manager->closeFile(colCatalogHandle);
+    _rbf_manager->closeFile(colCatalogHandle);*/
+    
+    string fileName;
+    vector<Attribute> descriptor;
+    if(getFileInfo(tableName, fileName, descriptor) != SUCCESS){
+        fprintf(stderr, "RelationManager: get file info failed\n");
+        return 1;
+    }
     
     FileHandle thisFileH;
     
-    _rbf_manager->openFile((string)fileName, thisFileH);
+    _rbf_manager->openFile(fileName, thisFileH);
     
-    _rbf_manager->readRecord(thisFileH, tableAttrs, rid, data);
+    _rbf_manager->readRecord(thisFileH, descriptor, rid, data);
     
     _rbf_manager->closeFile(thisFileH);
     
