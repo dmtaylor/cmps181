@@ -167,17 +167,17 @@ RelationManager* RelationManager::instance()
             char* colRecord;
             for(i=0; i<tableDescriptor.size(); ++i){
                 nameSize = tableDescriptor[i].name.length();
-                colRecord = calloc(SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
-                    SIZE_INT + SIZE_INT,1);
+                colRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                    INT_SIZE + INT_SIZE,1);
                     
-                memcpy(colRecord, &tableNum, SIZE_INT);
-                memcpy(colRecord + SIZE_INT, &nameSize, VARCHAR_LENGTH_SIZE);
-                tableDescriptor[i].name.copy(colRecord + SIZE_INT +
+                memcpy(colRecord, &tableNum, INT_SIZE);
+                memcpy(colRecord + INT_SIZE, &nameSize, VARCHAR_LENGTH_SIZE);
+                tableDescriptor[i].name.copy(colRecord + INT_SIZE +
                     VARCHAR_LENGTH_SIZE, nameSize, 0);
-                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize,
-                    &tableDescriptor[i].type, SIZE_INT);
-                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
-                    SIZE_INT, &tableDescriptor[i].length, SIZE_INT);
+                memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize,
+                    &tableDescriptor[i].type, INT_SIZE);
+                memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                    INT_SIZE, &tableDescriptor[i].length, INT_SIZE);
                     
                 _rbf_manager->insertRecord(colHandle, columnDescriptor,
                     (void*) colRecord, nullRID);
@@ -189,16 +189,16 @@ RelationManager* RelationManager::instance()
             tableNum = 1;
             for(i=0; i<columnDescriptor.size(); ++i){
                 nameSize = columnDescriptor[i].name.length();
-                colRecord = calloc(SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
-                    SIZE_INT + SIZE_INT,1);
-                memcpy(colRecord, &tableNum, SIZE_INT);
-                memcpy(colRecord + SIZE_INT, &nameSize, VARCHAR_LENGTH_SIZE);
-                columnDescriptor[i].name.copy(colRecord + SIZE_INT +
+                colRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                    INT_SIZE + INT_SIZE,1);
+                memcpy(colRecord, &tableNum, INT_SIZE);
+                memcpy(colRecord + INT_SIZE, &nameSize, VARCHAR_LENGTH_SIZE);
+                columnDescriptor[i].name.copy(colRecord + INT_SIZE +
                     VARCHAR_LENGTH_SIZE, nameSize, 0);
-                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize,
-                    &tableDescriptor[i].type, SIZE_INT);
-                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
-                    SIZE_INT, &tableDescriptor[i].length, SIZE_INT);
+                memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize,
+                    &tableDescriptor[i].type, INT_SIZE);
+                memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                    INT_SIZE, &tableDescriptor[i].length, INT_SIZE);
                     
                 _rbf_manager->insertRecord(colHandle, columnDescriptor,
                     (void*) colRecord, nullRID);
@@ -208,11 +208,11 @@ RelationManager* RelationManager::instance()
             
             if(_rbf_manager->closeFile(tableHandle) != SUCCESS){
                 fprintf(stderr,"Error: Table table close failed\n");
-                return -1;
+                return 0;
             }
             if(_rbf_manager->closeFile(colHandle) != SUCCESS){
                 fprintf(stderr,"Error: Column table close failed\n");
-                return -1;
+                return 0;
             }
         }
     
