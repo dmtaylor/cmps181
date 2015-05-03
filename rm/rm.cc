@@ -390,6 +390,46 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     return -1;
 }
 
+RC RelationManager::getFileInfo(const string &tableName, 
+								unsigned tableSize , vector<Attribute> ){
+	
+	FileHandle tableCatalogHandle;
+    
+    if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
+        fprintf(stderr, "RM: could not open file catalog\n");
+        return 1;
+    }
+    
+    // Get table information from catalog
+    vector<string> projAttributes;
+	projAttributes.push_back("tableID");
+	projAttributes.push_back("tableFName");
+    
+    RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
+	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+                       EQ_OP, &tableName, projAttributes , *scanIterator);
+
+	void* recordName;
+    RID nullRid;
+    
+    scanIterator->getNextRecord(nullRid, recordName);
+    
+    unsigned nameSize;
+    unsigned tableId;
+    char* fileName;
+    
+    memcpy(&nameSize, recordName, VARCHAR_LENGTH_SIZE);
+    fileName = (char*)calloc(nameSize,1);
+    memcpy(fileName, (char*)recordName + VARCHAR_LENGTH_SIZE, nameSize);
+    string fileName_s = fileName;
+    memcpy(&tableId, (char*) recordName + VARCHAR_LENGTH_SIZE + nameSize, INT_SIZE);
+    
+    scanIterator->close();
+    _rbf_manager->closeFile(tableCatalogHandle);
+
+	return 0;
+}
+
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
 
