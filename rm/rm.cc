@@ -53,7 +53,7 @@ RelationManager* RelationManager::instance()
         _rm->tableDescriptor.push_back(tableName);
         _rm->tableDescriptor.push_back(tableFName);
 
-        Attribute colId;
+        Attribute colId; //tableID column is in
         Attribute colName;
         Attribute colType;
         Attribute colLength;
@@ -205,28 +205,85 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
 {
+    //for cat_tables
 	FileHandle tableHandle;
+    FileHandle columnHandle;
 
-    
+    //opening tables  table
 	if(_rbf_manager->openFile(tableTableName, tableHandle)!= SUCCESS){
 		fprintf(stderr, "Error: could not open column catalog\n");
 		return 0;
 	}	
 
+    //opening columns table
+    if(_rbf_manager->openFile(tableTableName, columnHandle)!= SUCCESS){
+		fprintf(stderr, "Error: could not open column catalog\n");
+		return 0;
+    }
+
     vector<string> projAttributes;
-    projAttributes.push_back("tableID"); projAttributes.push_back("tableFName");
+    projAttributes.push_back("tableID"); 
+	projAttributes.push_back("tableFName");
 
     //scan tableTableFileName for FileName and TableID
 	RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
 	_rbf_manager->scan(tableHandle, tableDescriptor, "tableName", 
                        EQ_OP, &tableName, projAttributes , *scanIterator);
 
-   
-   //get tableID/FileName
+
+
+	//getting tableID.
+    void * tableID = malloc(INT_SIZE);
+    memcpy(&tableID, ScanIterator.records[0], INT_SIZE);  
+    //getting size of FName
+    void * FNameSize = malloc(VARCHAR_LENGTH_SIZE);
+    memcpy(&FNameSize, ScanIterator.records[0] + INT_SIZE, VARCHAR_LENGTH_SIZE);    
+    //getting FName
+    void * tableFName = malloc(*(int *)FNameSize + VARCHAR_LENGTH_SIZE);
+    //memcpy(&tableFName, ScanIterator.records[0] + INT_SIZE, ScanIterator.sizes[0] - INT_SIZE)
+    memcpy(&tableFName, ScanIterator.records[0] + INT_SIZE, *(int *)FNameSize + VARCHAR_LENGTH_SIZE);
+
+
+    vector<string> colProjAttributes;
+    colProjAttributes.push_back("colName");
+	colProjAttributes.push_back("colType");
+    colProjAttributes.push_back("colLength");
+
+    //getting record descriptor from cat_columns, using tableID.
+    RBFM_ScanIterator* colScanIterator = new RBFM_ScanIterator(); 
+    _rbf_manager->scan(columnHandle, columnDescriptor, "colId", EQ_OP,
+                       *(int *)tableID, colProjAttributes , colScanIterator);
+
+    //formatting column scan into vector<attribute>   ATTR: string/unsigned/type = name/length/type
+    vector<Attribute> descriptor;
+    for(unsigned i = 0; i < colScanIterator.records.size(); ++i){
+		Attribute curr; 
+        
+        void * attrNameSize = malloc(VARCHAR_LENGTH_SIZE);
+        memcpy(attrNameSize, colScanIterator.records[i], VARCHAR_LENGTH_SIZE);
+        void * attrName = malloc(*(int *)attrNameSize);
+		memcpy(&attrName, colScanIterator.records[i]+ VARCHAR_LENGTH_SIZE, attrNameSize);
+
+        curr.name = (string)attrName;
+
+        void * attrType = malloc(INT_SIZE);
+        memcpy(&attrType, colScanIterator[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize, INT_SIZE); 
+        curr.type = *(int *)attrType;
+
+        void * attrLength = malloc(INT_SIZE);
+		memcpy(&attrLength, colScanIterator[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize + INT_SIZE, INT_SIZE);        
+        curr.length = *(int *)attrLength;
+  
+        descriptor.push_back(curr);
+    }
     
-   //open FileName and insert using RBFM
+	//open FileName and insert using RBFM
+    FileHandle insertHandle;	
+    if(_rbf_manager->openFile(tableFName,insertHandle) != SUCCESS)
+		fprintf(stderr, "Error: RM::insertTuple: can't open tableFName");
 
-
+	//RC insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid)
+    if(_rbf_manager->insertRecord(insertHandle, descriptor, data, rid) != SUCCESS)
 	return 0;
 
 }
