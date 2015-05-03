@@ -390,45 +390,6 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     return -1;
 }
 
-RC RelationManager::getFileInfo(const string &tableName, 
-								unsigned tableSize , vector<Attribute> ){
-	
-	FileHandle tableCatalogHandle;
-    
-    if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
-        fprintf(stderr, "RM: could not open file catalog\n");
-        return 1;
-    }
-    
-    // Get table information from catalog
-    vector<string> projAttributes;
-	projAttributes.push_back("tableID");
-	projAttributes.push_back("tableFName");
-    
-    RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
-	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
-                       EQ_OP, &tableName, projAttributes , *scanIterator);
-
-	void* recordName;
-    RID nullRid;
-    
-    scanIterator->getNextRecord(nullRid, recordName);
-    
-    unsigned nameSize;
-    unsigned tableId;
-    char* fileName;
-    
-    memcpy(&nameSize, recordName, VARCHAR_LENGTH_SIZE);
-    fileName = (char*)calloc(nameSize,1);
-    memcpy(fileName, (char*)recordName + VARCHAR_LENGTH_SIZE, nameSize);
-    string fileName_s = fileName;
-    memcpy(&tableId, (char*) recordName + VARCHAR_LENGTH_SIZE + nameSize, INT_SIZE);
-    
-    scanIterator->close();
-    _rbf_manager->closeFile(tableCatalogHandle);
-
-	return 0;
-}
 
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
@@ -557,4 +518,89 @@ RC RelationManager::addAttribute(const string &tableName, const Attribute &attr)
 RC RelationManager::reorganizeTable(const string &tableName)
 {
     return -1;
+}
+
+RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor){
+	
+	FileHandle tableCatalogHandle;
+    
+    if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
+        fprintf(stderr, "RM: could not open file catalog\n");
+        return 1;
+    }
+    
+    // Get table information from catalog
+    vector<string> projAttributes;
+	projAttributes.push_back("tableID");
+	projAttributes.push_back("tableFName");
+    
+    RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
+	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+                       EQ_OP, &tableName, projAttributes , *scanIterator);
+
+	void* recordName;
+    RID nullRid;
+    
+    scanIterator->getNextRecord(nullRid, recordName);
+    
+    unsigned nameSize;
+    unsigned tableId;
+    char* fileName;
+    
+    memcpy(&nameSize, recordName, VARCHAR_LENGTH_SIZE);
+    fileName = (char*)calloc(nameSize,1);
+    memcpy(fileName, (char*)recordName + VARCHAR_LENGTH_SIZE, nameSize);
+    tableFileName = fileName;
+    memcpy(&tableId, (char*) recordName + VARCHAR_LENGTH_SIZE + nameSize, INT_SIZE);
+    
+    free(fileName);
+    scanIterator->close();
+    _rbf_manager->closeFile(tableCatalogHandle);
+    
+    
+    // get attributes for the table
+    FileHandle colCatalogHandle;
+    
+    scanIterator = new RBFM_ScanIterator();
+    if(_rbf_manager->openFile(tableFileName, colCatalogHandle) != SUCCESS){
+        fprintf(stderr, "RM: could not open column catalog\n");
+        return 2;
+    }
+    // build the attributes we want
+    vector<string> colProjAttributes;
+    colProjAttributes.push_back("colName");
+	colProjAttributes.push_back("colType");
+    colProjAttributes.push_back("colLength");
+    // do the scan
+    _rbf_manager->scan(colCatalogHandle, columnDescriptor, "colId", EQ_OP,
+                       &tableId, colProjAttributes , *scanIterator);
+                       
+    void* colRecord;
+    Attribute currAttr;
+    unsigned currNameLen;
+    char* currName;
+    string currName_s;
+    AttrType currType;
+    AttrLength currLen;
+    // iterate over the results, building an Attribute and inserting it into the results
+    while(scanIterator->getNextRecord(nullRid, colRecord) != RBFM_EOF){
+        memcpy(&currNameLen, colRecord, VARCHAR_LENGTH_SIZE);
+        currName = (char*)calloc(currNameLen, 1);
+        memcpy(currName, (char*) colRecord + VARCHAR_LENGTH_SIZE, currNameLen);
+        currName_s = currName;
+        currAttr.name = currName_s;
+        memcpy(&currType, (char*)colRecord + VARCHAR_LENGTH_SIZE + currNameLen, INT_SIZE);
+        currAttr.type = currType;
+        memcpy(&currLen, (char*)colRecord + VARCHAR_LENGTH_SIZE + currNameLen + INT_SIZE, INT_SIZE);
+        currAttr.length = currLen;
+        
+        descriptor.push_back(currAttr);
+        free(currName);
+    }
+
+    scanIterator->close();
+    _rbf_manager->closeFile(colCatalogHandle);
+    
+
+	return 0;
 }
