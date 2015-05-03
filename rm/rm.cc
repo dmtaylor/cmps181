@@ -253,13 +253,13 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     FileHandle columnHandle;
 
     //opening tables  table
-	if(_rbf_manager->openFile(tableTableName, tableHandle)!= SUCCESS){
-		fprintf(stderr, "Error: could not open column catalog\n");
+	if(_rbf_manager->openFile(tableTableFileName, tableHandle)!= SUCCESS){
+		fprintf(stderr, "Error: could not open table catalog\n");
 		return 0;
 	}	
 
     //opening columns table
-    if(_rbf_manager->openFile(tableTableName, columnHandle)!= SUCCESS){
+    if(_rbf_manager->openFile(columnTableFileName, columnHandle)!= SUCCESS){
 		fprintf(stderr, "Error: could not open column catalog\n");
 		return 0;
     }
@@ -333,7 +333,16 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 RC RelationManager::deleteTuples(const string &tableName)
 {
-    return -1;
+    FileHandle tableCatalogHandle;
+    
+    //opening tables  table
+	if(_rbf_manager->openFile(tableTableName, tableHandle)!= SUCCESS){
+		fprintf(stderr, "Error: could not open column catalog\n");
+		return 0;
+	}
+    
+    
+    
 }
 
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
@@ -348,7 +357,13 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
-    return -1;
+    FileHandle tableCatalogHandle;
+    
+    if(_rbf_manager->openFile(tableTableFileName, tableCatalogHandle) != SUCCESS){
+        fprintf(stderr, "RM: could ")
+        
+        
+    }
 }
 
 RC RelationManager::readAttribute(const string &tableName, const RID &rid, const string &attributeName, void *data)
