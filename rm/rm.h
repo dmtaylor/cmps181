@@ -104,6 +104,7 @@ private:
   static vector<Attribute> columnDescriptor;
   
   RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor);
+  unsigned getValidCatalogID();
 };
 
 #endif
