@@ -417,8 +417,10 @@ RC RelationManager::deleteTuples(const string &tableName){
 	vector<Attribute> descriptor;
     string tableFileName;
 
-    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS)
+    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS){
+		fprintf(stderr, "Error: RM-deleteTuples() Can not gt file info\n");
 		return 1;
+	}
 
     FileHandle tableHandle;
 	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
@@ -468,9 +470,34 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 
 }
 
+//RC updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid);
 RC RelationManager::updateTuple(const string &tableName, const void *data, const RID &rid)
 {
-    return -1;
+    
+	vector<Attribute> descriptor;
+    string tableFileName;
+
+    if(getFileInfo(tableName, tableFileName, descriptor)!= SUCCESS){
+		fprintf(stderr, "RM: updateTuple(): Could not get file info");
+		return 1;
+	}
+
+	FileHandle tableHandle;
+	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+		fprintf(stderr, "RM: updateTuple(): openFile(tableFileName) failed");
+		return 1;
+	}
+	
+	if(_rbf_manager->updateRecord(tableHandle, descriptor, data ,rid) != SUCCESS){
+		fprintf(stderr, "RM: updateTuple(): updateRecord(tableHandle, ...) failed");
+		return 1;
+	}
+	
+	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM: updateTuple(): closeFile(tableHandle) failed \n");
+		return 1;
+	}
+	return 0;
 }
 
 
@@ -572,11 +599,38 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     
 }
 
+//RC readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data);
 RC RelationManager::readAttribute(const string &tableName, const RID &rid, const string &attributeName, void *data)
 {
-    return -1;
+	vector<Attribute> descriptor;
+    string tableFileName;
+
+    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS){
+		fprintf(stderr, "Error: RM-readAttribute() Can not get file info\n");
+		return 1;
+	}
+
+    FileHandle tableHandle;
+	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-readAttribute() openFile(tableFileName) failed\n");
+		return 1;
+	}
+
+	if(_rbf_manager->readAttribute(tableHandle, descriptor, rid, attributeName, data) != SUCCESS){
+		fprintf(stderr, "Error: RM-readAttribute() _rbf_manager->readAttribute(...) failed\n");
+		return 1;
+	} 
+
+	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM: readAttribute(): closeFile(tableHandle) failed \n");
+		return 1;
+	}
+	return 0;
+
 }
 
+
+//"optional"- Sr. Paolo
 RC RelationManager::reorganizePage(const string &tableName, const unsigned pageNumber)
 {
     return -1;
