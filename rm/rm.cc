@@ -167,7 +167,7 @@ RelationManager* RelationManager::instance()
             char* colRecord;
             for(i=0; i<tableDescriptor.size(); ++i){
                 nameSize = tableDescriptor[i].name.length();
-                colRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                colRecord = (char*)calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE + INT_SIZE,1);
                     
                 memcpy(colRecord, &tableNum, INT_SIZE);
@@ -189,7 +189,7 @@ RelationManager* RelationManager::instance()
             tableNum = 1;
             for(i=0; i<columnDescriptor.size(); ++i){
                 nameSize = columnDescriptor[i].name.length();
-                colRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
+                colRecord = (char*)calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE + INT_SIZE,1);
                 memcpy(colRecord, &tableNum, INT_SIZE);
                 memcpy(colRecord + INT_SIZE, &nameSize, VARCHAR_LENGTH_SIZE);
@@ -310,11 +310,11 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
         curr.name = (char *)attrName;
 
         void * attrType = malloc(INT_SIZE);
-        memcpy(&attrType, colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize, INT_SIZE); 
+        memcpy(&attrType, (char*)colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize, INT_SIZE); 
         curr.type = *(int *)attrType;
 
         void * attrLength = malloc(INT_SIZE);
-		memcpy(&attrLength, colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize + INT_SIZE, INT_SIZE);        
+		memcpy(&attrLength, (char*)colScanIterator->records[i] + VARCHAR_LENGTH_SIZE + *(int *)attrNameSize + INT_SIZE, INT_SIZE);        
         curr.length = *(int *)attrLength;
   
         descriptor.push_back(curr);
@@ -406,7 +406,7 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     projAttributes.push_back("tableID");
     
     RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
-	_rbf_manager->scan(tableHandle, tableDescriptor, "tableName", 
+	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
                        EQ_OP, &tableName, projAttributes , *scanIterator);
                        
     void* recordName;
@@ -419,7 +419,7 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     char* fileName;
     
     memcpy(&nameSize, recordName, VARCHAR_LENGTH_SIZE);
-    fileName = calloc(nameSize,1);
+    fileName = (char*)calloc(nameSize,1);
     memcpy(fileName, (char*)recordName + VARCHAR_LENGTH_SIZE, nameSize);
     string fileName_s = fileName;
     memcpy(&tableId, (char*) recordName + VARCHAR_LENGTH_SIZE + nameSize, INT_SIZE);
@@ -441,7 +441,7 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
 	colProjAttributes.push_back("colType");
     colProjAttributes.push_back("colLength");
     _rbf_manager->scan(colCatalogHandle, columnDescriptor, "colId", EQ_OP,
-                       &tableId, colProjAttributes , scanIterator);
+                       &tableId, colProjAttributes , *scanIterator);
                        
     void* colRecord;
     vector<Attribute> tableAttrs;
@@ -453,7 +453,7 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     AttrLength currLen;
     while(scanIterator->getNextRecord(nullRid, colRecord) != RBFM_EOF){
         memcpy(&currNameLen, colRecord, VARCHAR_LENGTH_SIZE);
-        currName = calloc(currNameLen, 1);
+        currName = (char*)calloc(currNameLen, 1);
         memcpy(currName, (char*) colRecord + VARCHAR_LENGTH_SIZE, currNameLen);
         currName_s = currName;
         currAttr.name = currName_s;
