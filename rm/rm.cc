@@ -30,8 +30,6 @@ RelationManager* RelationManager::instance()
 {
     if(!_rm)
         _rm = new RelationManager();
-        FileHandle tableHandle;
-        FileHandle colHandle;
         
         Attribute tableId;
         Attribute tableName;
@@ -78,6 +76,9 @@ RelationManager* RelationManager::instance()
         _rm->columnDescriptor.push_back(colName);
 		_rm->columnDescriptor.push_back(colType);
 		_rm->columnDescriptor.push_back(colLength);
+        
+        FileHandle tableHandle;
+        FileHandle colHandle;
         
         // If table catalog not found, create the catalog
         if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
@@ -129,8 +130,6 @@ RelationManager* RelationManager::instance()
             }
             // insert column info here
             
-            //TODO
-            
             if(_rbf_manager->openFile(columnTableFileName, colHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open column catalog\n");
                 return 0;
@@ -160,19 +159,63 @@ RelationManager* RelationManager::instance()
             free(tableData);
             
             //add column entries for the table table and itself
+            // Format: id_INT, name_STR, type_INT, length_INT
             unsigned i;
-            unsigned strSize;
+            unsigned nameSize;
+            unsigned tableNum = 0;
+            RID nullRID;
+            char* colRecord;
             for(i=0; i<tableDescriptor.size(); ++i){
+                nameSize = tableDescriptor[i].name.length();
+                colRecord = calloc(SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
+                    SIZE_INT + SIZE_INT,1);
+                    
+                memcpy(colRecord, &tableNum, SIZE_INT);
+                memcpy(colRecord + SIZE_INT, &nameSize, VARCHAR_LENGTH_SIZE);
+                tableDescriptor[i].name.copy(colRecord + SIZE_INT +
+                    VARCHAR_LENGTH_SIZE, nameSize, 0);
+                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize,
+                    &tableDescriptor[i].type, SIZE_INT);
+                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
+                    SIZE_INT, &tableDescriptor[i].length, SIZE_INT);
+                    
+                _rbf_manager->insertRecord(colHandle, columnDescriptor,
+                    (void*) colRecord, nullRID);
                 
-                
-                
+                free(colRecord);
             }
             
+            //Column entries for the column table
+            tableNum = 1;
+            for(i=0; i<columnDescriptor.size(); ++i){
+                nameSize = columnDescriptor[i].name.length();
+                colRecord = calloc(SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
+                    SIZE_INT + SIZE_INT,1);
+                memcpy(colRecord, &tableNum, SIZE_INT);
+                memcpy(colRecord + SIZE_INT, &nameSize, VARCHAR_LENGTH_SIZE);
+                columnDescriptor[i].name.copy(colRecord + SIZE_INT +
+                    VARCHAR_LENGTH_SIZE, nameSize, 0);
+                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize,
+                    &tableDescriptor[i].type, SIZE_INT);
+                memcpy(colRecord + SIZE_INT + VARCHAR_LENGTH_SIZE + nameSize +
+                    SIZE_INT, &tableDescriptor[i].length, SIZE_INT);
+                    
+                _rbf_manager->insertRecord(colHandle, columnDescriptor,
+                    (void*) colRecord, nullRID);
+                
+                free(colRecord);
+            }
             
-            
-            
-            
+            if(_rbf_manager->closeFile(tableHandle) != SUCCESS){
+                fprintf(stderr,"Error: Table table close failed\n");
+                return -1;
+            }
+            if(_rbf_manager->closeFile(colHandle) != SUCCESS){
+                fprintf(stderr,"Error: Column table close failed\n");
+                return -1;
+            }
         }
+    
     return _rm;
 }
 
