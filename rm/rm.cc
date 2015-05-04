@@ -29,7 +29,11 @@ RecordBasedFileManager* RelationManager::_rbf_manager;
 RelationManager* RelationManager::instance()
 {
     if(!_rm)
+
+	fprintf(stderr, "Creating New relation manager\n");
         _rm = new RelationManager();
+
+	fprintf(stderr, "New manager made\n");
         
         Attribute tableId;
         Attribute tableName;
@@ -47,9 +51,13 @@ RelationManager* RelationManager::instance()
         tableFName.type = TypeVarChar;
         tableFName.length = VARCHAR_LENGTH_SIZE;
 
+	fprintf(stderr, "Table catalog attributes initialized\n");
+
         _rm->tableDescriptor.push_back(tableId);
         _rm->tableDescriptor.push_back(tableName);
         _rm->tableDescriptor.push_back(tableFName);
+
+	fprintf(stderr, "Attributes added\n");
 
         Attribute colId; //tableID column is in
         Attribute colName;
@@ -71,22 +79,28 @@ RelationManager* RelationManager::instance()
         colLength.name = "columnLength";
         colLength.type = TypeInt;
         colLength.length = INT_SIZE;
+	fprintf(stderr, "Table catalog attributes initialized\n");
 
         _rm->columnDescriptor.push_back(colId);
         _rm->columnDescriptor.push_back(colName);
 		_rm->columnDescriptor.push_back(colType);
 		_rm->columnDescriptor.push_back(colLength);
+
+	fprintf(stderr, "Table catalog attributes initialized\n");
         
         FileHandle tableHandle;
         FileHandle colHandle;
         
         // If table catalog not found, create the catalog
         if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
+	    fprintf(stderr, "Failed to open file\n");
             if(_rbf_manager->createFile(tableTableFileName) != SUCCESS){
                 fprintf(stderr, "Error: could not create table catalog\n");
                 return 0;
             }
             // insert table info here
+
+		fprintf(stderr,"file created\n");
             
             if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open table catalog\n");
