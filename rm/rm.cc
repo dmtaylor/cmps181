@@ -874,7 +874,7 @@ RC RelationManager::scan(const string &tableName,
 		return 1;
 	}
     
-    if(_rbf_manager->scan(tableHandle, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfm_SI) != SUCCESS){
+    if(_rbf_manager->scan(tableHandle, descriptor, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfm_SI) != SUCCESS){
         fprintf(stderr, "RelationManager: rbf scan failed\n");
         return 2;
     }
