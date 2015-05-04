@@ -261,10 +261,10 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
     }
     
     string fileName = "usr_" + tableName + ".table";
-    unsigned tableId = getValidCatalogId();
+    unsigned newTableId = getValidCatalogID();
     
     if(_rbf_manager->createFile(fileName) != SUCCESS){
-        fprintf(stderr, "RelationManager: file table creation for %s failed\n", tableName);
+        fprintf(stderr, "RelationManager: file table creation for %s failed\n", tableName.c_str());
         return 3;
     }
     
@@ -281,7 +281,7 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
         exit(1);
     }
     
-    memcpy(tableRecord, &tableId, INT_SIZE);
+    memcpy(tableRecord, &newTableId, INT_SIZE);
     memcpy((char*) tableRecord + INT_SIZE, &nameLen, VARCHAR_LENGTH_SIZE);
     tableName.copy((char*) tableRecord + INT_SIZE + VARCHAR_LENGTH_SIZE, nameLen, 0);
     memcpy((char*) tableRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameLen, &fileNameLen, VARCHAR_LENGTH_SIZE);
@@ -348,18 +348,18 @@ RC RelationManager::deleteTable(const string &tableName)
     vector<Attribute> getAttrs;
     unsigned tableId;
     if(getFileInfo(tableName, fileName, getAttrs, tableId) != SUCCESS){
-        fprintf(stderr, "RelationManager: table %s not found\n", tableName);
+        fprintf(stderr, "RelationManager: table %s not found\n", tableName.c_str());
         return 1;
     }
     
-    RBFM_ScanIterator rbf_iter = new RBFM_ScanIterator();
-    RM_ScanIterator rm_iter = new RM_ScanIterator(rbf_iter);
+    RBFM_ScanIterator* rbf_iter = new RBFM_ScanIterator();
+    RM_ScanIterator* rm_iter = new RM_ScanIterator(rbf_iter);
     
-    RBFM_ScanIterator rbf_iter_tab = new RBFM_ScanIterator();
-    RM_ScanIterator rm_iter_tab = new RM_ScanIterator(rbf_iter_tab);
+    RBFM_ScanIterator* rbf_iter_tab = new RBFM_ScanIterator();
+    RM_ScanIterator* rm_iter_tab = new RM_ScanIterator(*rbf_iter_tab);
     
     
-    vector<string> projAttrs = {"tableId"};
+    vector<string> projAttrs {(string)"tableId"};
     
     RID toDelId;
     void* nullData = malloc(INT_SIZE);
@@ -390,7 +390,7 @@ RC RelationManager::deleteTable(const string &tableName)
     
     
     while(rm_iter.getNextTuple(toDelId, nullData) != RBFM_EOF){
-        if(deleteTuple(columnTableName, toDelId) != SUCCESS{
+        if(deleteTuple(columnTableName, toDelId) != SUCCESS){
             fprintf(stderr, "RelationManager: cannot remove attribute entry from catalog\n");
             free(nullData);
             return 2;
@@ -413,7 +413,7 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
     vector<Attribute> getAttrs;
     unsigned tableId;
     if(getFileInfo(tableName, fileName, getAttrs, tableId) != SUCCESS){
-        fprintf(stderr, "RelationManager: table %s not found\n", tableName);
+        fprintf(stderr, "RelationManager: table %s not found\n", tableName.c_str());
         return 1;
     }
     attrs = getAttrs;
@@ -874,7 +874,7 @@ RC RelationManager::scan(const string &tableName,
 	}
     
     if(_rbf_manager->scan(tableHandle, conditionAttribute, compOp, value, attributeNames,
-                          rm_ScanIterator.rbfm_SI) != SUCCESS){
+                          *rm_ScanIterator.rbfm_SI) != SUCCESS){
         fprintf(stderr, "RelationManager: rbf scan failed\n");
         return 2;
     }
