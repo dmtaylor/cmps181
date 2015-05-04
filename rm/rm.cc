@@ -92,7 +92,7 @@ RelationManager* RelationManager::instance()
 	    fprintf(stderr, "Table catalog attributes initialized\n");
         
         FileHandle* tableHandle = new FileHandle();
-        FileHandle colHandle;
+        FileHandle* colHandle = new FileHandle();
 
 	    //std::cout << "rm " << tableTableFileName << endl;
         
@@ -149,14 +149,14 @@ RelationManager* RelationManager::instance()
             
         }
         // if column catalog not found, create it here
-        if(_rm->_rbf_manager->openFile("sys_cols.table", colHandle) != SUCCESS){
+        if(_rm->_rbf_manager->openFile("sys_cols.table", *colHandle) != SUCCESS){
             if(_rbf_manager->createFile("sys_cols.table") != SUCCESS){
                 fprintf(stderr, "Error: could not create column catalog\n");
                 return 0;
             }
             // insert column info here
             
-            if(_rbf_manager->openFile("sys_cols.table", colHandle) != SUCCESS){
+            if(_rbf_manager->openFile("sys_cols.table", *colHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open column catalog\n");
                 return 0;
             }
@@ -213,7 +213,7 @@ RelationManager* RelationManager::instance()
                 memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE, &tableDescriptor[i].length, INT_SIZE);
                     
-                _rbf_manager->insertRecord(colHandle, columnDescriptor,
+                _rbf_manager->insertRecord(*colHandle, columnDescriptor,
                     (void*) colRecord, nullRID);
                 
                 free(colRecord);
@@ -238,7 +238,7 @@ RelationManager* RelationManager::instance()
                 memcpy(colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE, &tableDescriptor[i].length, INT_SIZE);
                     
-                _rbf_manager->insertRecord(colHandle, columnDescriptor,
+                _rbf_manager->insertRecord(*colHandle, columnDescriptor,
                     (void*) colRecord, nullRID);
                 
                 free(colRecord);
@@ -248,7 +248,7 @@ RelationManager* RelationManager::instance()
                 fprintf(stderr,"Error: Table table close failed\n");
                 return 0;
             }
-            if(_rbf_manager->closeFile(colHandle) != SUCCESS){
+            if(_rbf_manager->closeFile(*colHandle) != SUCCESS){
                 fprintf(stderr,"Error: Column table close failed\n");
                 return 0;
             }
@@ -539,13 +539,13 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     unsigned tableId;
     getFileInfo(tableName, fileName, descriptor, tableId);
     
-    FileHandle tableHandle;
-    if(_rbf_manager->openFile(fileName, tableHandle) != SUCCESS){
+    FileHandle* tableHandle = new FileHandle();
+    if(_rbf_manager->openFile(fileName, *tableHandle) != SUCCESS){
         fprintf(stderr, "RelationManager: could not open table file\n");
         return 1;
     }
     
-    if(_rbf_manager->insertRecord(tableHandle, descriptor, data, rid) != SUCCESS){
+    if(_rbf_manager->insertRecord(*tableHandle, descriptor, data, rid) != SUCCESS){
         fprintf(stderr, "RelationManager: tuple insert failed\n");
         return 2;
     }
@@ -634,16 +634,16 @@ RC RelationManager::deleteTuples(const string &tableName){
 		return 1;
 	}
 
-    FileHandle tableHandle;
-	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+    FileHandle* tableHandle = new FileHandle();
+	if(_rbf_manager->openFile(tableFileName, *tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-deleteTuples() Can't open FILE: tableFileName\n");
 		return 1;
 	}
-	if(_rbf_manager->deleteRecords(tableHandle) != SUCCESS){
+	if(_rbf_manager->deleteRecords(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-deleteTuples() deleteRecords(tableHandle) failed \n");
 		return 1;
 	}
-	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+	if (_rbf_manager->closeFile(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-deleteTuples() closeFile(tableHandle) failed \n");
 		return 1;
 	}
@@ -668,19 +668,19 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 		return 1;
 	}
 
-	FileHandle tableHandle;
+	FileHandle* tableHandle = new FileHandle();
 	
-	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+	if(_rbf_manager->openFile(tableFileName, *tableHandle) != SUCCESS){
 		fprintf(stderr, "RM: deleteTuple(): openFile(tableFileName) failed");
 		return 1;
 	}
 
-	if(_rbf_manager->deleteRecord(tableHandle, descriptor, rid) != SUCCESS){
+	if(_rbf_manager->deleteRecord(*tableHandle, descriptor, rid) != SUCCESS){
 		fprintf(stderr, "RM: deleteTuple(): deleteRecord(tableFileName) failed");
 		return 1;
 	}
 	
-	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+	if (_rbf_manager->closeFile(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-deleteTuple() closeFile(tableHandle) failed \n");
 		return 1;
 	}
@@ -705,18 +705,18 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 		return 1;
 	}
 
-	FileHandle tableHandle;
-	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+	FileHandle* tableHandle = new FileHandle();
+	if(_rbf_manager->openFile(tableFileName, *tableHandle) != SUCCESS){
 		fprintf(stderr, "RM: updateTuple(): openFile(tableFileName) failed");
 		return 1;
 	}
 	
-	if(_rbf_manager->updateRecord(tableHandle, descriptor, data ,rid) != SUCCESS){
+	if(_rbf_manager->updateRecord(*tableHandle, descriptor, data ,rid) != SUCCESS){
 		fprintf(stderr, "RM: updateTuple(): updateRecord(tableHandle, ...) failed");
 		return 1;
 	}
 	
-	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+	if (_rbf_manager->closeFile(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM: updateTuple(): closeFile(tableHandle) failed \n");
 		return 1;
 	}
@@ -816,13 +816,13 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
         return 1;
     }
     
-    FileHandle thisFileH;
+    FileHandle* thisFileH = new FileHandle();
     
-    _rbf_manager->openFile(fileName, thisFileH);
+    _rbf_manager->openFile(fileName, *thisFileH);
     
-    _rbf_manager->readRecord(thisFileH, descriptor, rid, data);
+    _rbf_manager->readRecord(*thisFileH, descriptor, rid, data);
     
-    _rbf_manager->closeFile(thisFileH);
+    _rbf_manager->closeFile(*thisFileH);
     
     return 0;
     
@@ -845,18 +845,18 @@ RC RelationManager::readAttribute(const string &tableName, const RID &rid, const
 		return 1;
 	}
 
-    FileHandle tableHandle;
-	if(_rbf_manager->openFile(tableFileName, tableHandle) != SUCCESS){
+    FileHandle* tableHandle = new FileHandle();
+	if(_rbf_manager->openFile(tableFileName, *tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-readAttribute() openFile(tableFileName) failed\n");
 		return 1;
 	}
 
-	if(_rbf_manager->readAttribute(tableHandle, descriptor, rid, attributeName, data) != SUCCESS){
+	if(_rbf_manager->readAttribute(*tableHandle, descriptor, rid, attributeName, data) != SUCCESS){
 		fprintf(stderr, "Error: RM-readAttribute() _rbf_manager->readAttribute(...) failed\n");
 		return 1;
 	} 
 
-	if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+	if (_rbf_manager->closeFile(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM: readAttribute(): closeFile(tableHandle) failed \n");
 		return 1;
 	}
@@ -891,18 +891,18 @@ RC RelationManager::scan(const string &tableName,
         return 1;
     }
     
-    FileHandle tableHandle;
-	if(_rbf_manager->openFile(fileName, tableHandle) != SUCCESS){
+    FileHandle* tableHandle = new FileHandle();
+	if(_rbf_manager->openFile(fileName, *tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM-readAttribute() openFile(tableFileName) failed\n");
 		return 1;
 	}
     
-    if(_rbf_manager->scan(tableHandle, descriptor, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfm_SI) != SUCCESS){
+    if(_rbf_manager->scan(*tableHandle, descriptor, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.rbfm_SI) != SUCCESS){
         fprintf(stderr, "RelationManager: rbf scan failed\n");
         return 2;
     }
     
-    if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+    if (_rbf_manager->closeFile(*tableHandle) != SUCCESS){
 		fprintf(stderr, "Error: RM: readAttribute(): closeFile(tableHandle) failed \n");
 		return 1;
 	}
@@ -930,9 +930,9 @@ RC RelationManager::reorganizeTable(const string &tableName)
 
 RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor, unsigned &tableId){
 	
-	FileHandle tableCatalogHandle;
+	FileHandle* tableCatalogHandle;
     
-    if(_rbf_manager->openFile("sys_table.table", tableCatalogHandle) != SUCCESS){
+    if(_rbf_manager->openFile("sys_table.table", *tableCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open file catalog\n");
         return 1;
     }
@@ -943,7 +943,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 	projAttributes.push_back("tableFName");
     
     RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
-	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+	_rbf_manager->scan(*tableCatalogHandle, tableDescriptor, "tableName", 
                        EQ_OP, &tableName, projAttributes , *scanIterator);
 
 	void* recordName;
@@ -969,10 +969,10 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     
     
     // get attributes for the table
-    FileHandle colCatalogHandle;
+    FileHandle* colCatalogHandle = new FileHandle();
     
     scanIterator = new RBFM_ScanIterator();
-    if(_rbf_manager->openFile(tableFileName, colCatalogHandle) != SUCCESS){
+    if(_rbf_manager->openFile(tableFileName, *colCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open column catalog\n");
         return 2;
     }
@@ -982,7 +982,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 	colProjAttributes.push_back("colType");
     colProjAttributes.push_back("colLength");
     // do the scan
-    _rbf_manager->scan(colCatalogHandle, columnDescriptor, "colId", EQ_OP,
+    _rbf_manager->scan(*colCatalogHandle, columnDescriptor, "colId", EQ_OP,
                        &tableId, colProjAttributes , *scanIterator);
                        
     void* colRecord;
@@ -1014,7 +1014,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     }
 
     scanIterator->close();
-    _rbf_manager->closeFile(colCatalogHandle);
+    _rbf_manager->closeFile(*colCatalogHandle);
     
 
 	return 0;
@@ -1023,9 +1023,9 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 unsigned RelationManager::getValidCatalogID(){
     unsigned newId=1;
     
-    FileHandle tableCatalogHandle;
+    FileHandle* tableCatalogHandle;
     
-    if(_rbf_manager->openFile("sys_table.table", tableCatalogHandle) != SUCCESS){
+    if(_rbf_manager->openFile("sys_table.table", *tableCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open file catalog\n");
         return 1;
     }
@@ -1034,7 +1034,7 @@ unsigned RelationManager::getValidCatalogID(){
     vector<string> projAttributes;
 	projAttributes.push_back("tableID");
     RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
-	_rbf_manager->scan(tableCatalogHandle, tableDescriptor, "tableName", 
+	_rbf_manager->scan(*tableCatalogHandle, tableDescriptor, "tableName", 
                        NO_OP, &"cat_table", projAttributes , *scanIterator);
                        
     void* recordData = calloc(INT_SIZE, 1);
