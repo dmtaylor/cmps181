@@ -338,11 +338,21 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 
 RC RelationManager::deleteTable(const string &tableName)
 {
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
     return -1;
 }
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
 {
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
     string fileName;
     vector<Attribute> getAttrs;
     if(getFileInfo(tableName, fileName, getAttrs) != SUCCESS){
@@ -438,6 +448,11 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     if(_rbf_manager->insertRecord(insertHandle, descriptor, data, rid) != SUCCESS)
 	return 0;*/
     
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
     string fileName;
     vector<Attribute> descriptor;
     getFileInfo(tableName, fileName, descriptor);
@@ -522,6 +537,11 @@ RC RelationManager::deleteTuples(const string &tableName)
 //RC openFile(const string &fileName, FileHandle &fileHandle)
 //RC deleteRecords(FileHandle &fileHandle);
 RC RelationManager::deleteTuples(const string &tableName){
+    
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
 
 	vector<Attribute> descriptor;
     string tableFileName;
@@ -551,6 +571,11 @@ RC RelationManager::deleteTuples(const string &tableName){
 //RC deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid);
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 {
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
     vector<Attribute> descriptor;
     string tableFileName;
 
@@ -582,6 +607,10 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 //RC updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid);
 RC RelationManager::updateTuple(const string &tableName, const void *data, const RID &rid)
 {
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
     
 	vector<Attribute> descriptor;
     string tableFileName;
@@ -689,6 +718,11 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     scanIterator->close();
     _rbf_manager->closeFile(colCatalogHandle);*/
     
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
     string fileName;
     vector<Attribute> descriptor;
     if(getFileInfo(tableName, fileName, descriptor) != SUCCESS){
@@ -711,6 +745,11 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
 //RC readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data);
 RC RelationManager::readAttribute(const string &tableName, const RID &rid, const string &attributeName, void *data)
 {
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
 	vector<Attribute> descriptor;
     string tableFileName;
 
