@@ -102,6 +102,10 @@ RelationManager* RelationManager::instance()
             //create the record to be inserted.
             char* tableData = (char*) calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
                 tableNameLength + VARCHAR_LENGTH_SIZE + tableFilenameLength ,1);
+            if(tableData == NULL){
+                fprintf(stderr, "RelationManager: calloc failed\n");
+                exit(1);
+            }
             
             // populate the table    
             memcpy(tableData, &tableTableId, INT_SIZE);
@@ -142,6 +146,10 @@ RelationManager* RelationManager::instance()
             
             char* tableData = (char*) calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
                 colNameLength + VARCHAR_LENGTH_SIZE + colFNameLength ,1);
+            if(tableData == NULL){
+                fprintf(stderr, "RelationManager: calloc failed\n");
+                exit(1);
+            }
             
             memcpy(tableData, &columnTableId, INT_SIZE);
             memcpy(tableData + INT_SIZE, &colNameLength, VARCHAR_LENGTH_SIZE);
@@ -169,6 +177,10 @@ RelationManager* RelationManager::instance()
                 nameSize = tableDescriptor[i].name.length();
                 colRecord = (char*)calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE + INT_SIZE,1);
+                if(colRecord == NULL){
+                    fprintf(stderr, "RelationManager: calloc failed\n");
+                    exit(1);
+                }
                     
                 memcpy(colRecord, &tableNum, INT_SIZE);
                 memcpy(colRecord + INT_SIZE, &nameSize, VARCHAR_LENGTH_SIZE);
@@ -191,6 +203,10 @@ RelationManager* RelationManager::instance()
                 nameSize = columnDescriptor[i].name.length();
                 colRecord = (char*)calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameSize +
                     INT_SIZE + INT_SIZE,1);
+                if(colRecord == NULL){
+                    fprintf(stderr, "RelationManager: calloc failed\n");
+                    exit(1);
+                }
                 memcpy(colRecord, &tableNum, INT_SIZE);
                 memcpy(colRecord + INT_SIZE, &nameSize, VARCHAR_LENGTH_SIZE);
                 columnDescriptor[i].name.copy(colRecord + INT_SIZE +
@@ -246,9 +262,76 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
     string fileName = "usr_" + tableName + ".table";
     unsigned tableId = getValidCatalogId();
     
-    //TODO: create the RB file
+    if(_rbf_manager->createFile(fileName) != SUCCESS){
+        fprintf(stderr, "RelationManager: file table creation for %s failed\n", tableName);
+        return 3;
+    }
     
-    //TODO: insert entry in catalog
+    
+    // Insert entry into table catalog
+    unsigned nameLen = tableName.size();
+    unsigned fileNameLen = fileName.size();
+    RID nullRid;
+    
+    void* tableRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + nameLen + 
+        VARCHAR_LENGTH_SIZE + fileNameLen, 1);
+    if(tableRecord == NULL){
+        fprintf(stderr, "RelationManager: calloc failed\n");
+        exit(1);
+    }
+    
+    memcpy(tableRecord, &tableId, INT_SIZE);
+    memcpy((char*) tableRecord + INT_SIZE, &nameLen, VARCHAR_LENGTH_SIZE);
+    tableName.copy((char*) tableRecord + INT_SIZE + VARCHAR_LENGTH_SIZE, nameLen, 0);
+    memcpy((char*) tableRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + nameLen, &fileNameLen, VARCHAR_LENGTH_SIZE);
+    fileName.copy((char*) tableRecord + INT_SIZE + VARCHAR_LENGTH_SIZE +
+        nameLen + VARCHAR_LENGTH_SIZE, fileNameLen, 0);
+        
+    if(insertTuple(tableTableName, tableRecord, nullRid) != SUCCESS){
+        fprintf(stderr, "RelationManager: table catalog insert failed\n");
+        return 4;
+    }
+    
+    free(tableRecord);
+    
+    // Insert attributes into column catalog
+    unsigned i;
+    string colName;
+    unsigned colNameLen;
+    unsigned colType;
+    unsigned colLen;
+    void* colRecord;
+    
+    for(i=0; i<attrs.size(); ++i){
+        colName = attrs[i].name;
+        colNameLen = colName.size();
+        colType = attrs[i].type;
+        colLen = attrs[i].length;
+        
+        colRecord = calloc(INT_SIZE + VARCHAR_LENGTH_SIZE + colNameLen + INT_SIZE + INT_SIZE ,1);
+        if(colRecord == NULL){
+            fprintf(stderr, "RelationManager: calloc failed\n");
+            exit(1);
+        }
+        
+        memcpy(colRecord, &tableId, INT_SIZE);
+        memcpy((char*) colRecord + INT_SIZE, &colNameLen, VARCHAR_LENGTH_SIZE);
+        colName.copy((char*) colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE, colNameLen, 0);
+        memcpy((char*) colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + colNameLen, &colType, INT_SIZE);
+        memcpy((char*) colRecord + INT_SIZE + VARCHAR_LENGTH_SIZE + colNameLen + INT_SIZE,
+            &colLen, INT_SIZE);
+        
+        if(insertTuple(columnTableName, colRecord, nullRid) != SUCCESS){
+            fprintf(stderr, "RelationManager: column catalog insert failed\n");
+            free(colRecord);
+            return 5;
+        }
+        
+        free(colRecord);
+        
+    }
+    
+    
     
     return 1;
 }
@@ -759,6 +842,11 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     while(scanIterator->getNextRecord(nullRid, colRecord) != RBFM_EOF){
         memcpy(&currNameLen, colRecord, VARCHAR_LENGTH_SIZE);
         currName = (char*)calloc(currNameLen, 1);
+        if(currName == NULL){
+            fprintf(stderr, "RelationManager: calloc failed\n");
+            exit(1);
+        }
+        
         memcpy(currName, (char*) colRecord + VARCHAR_LENGTH_SIZE, currNameLen);
         currName_s = currName;
         currAttr.name = currName_s;
@@ -796,6 +884,11 @@ unsigned RelationManager::getValidCatalogID(){
                        NO_OP, &tableTableName, projAttributes , *scanIterator);
                        
     void* recordData = calloc(INT_SIZE, 1);
+    if(recordData == NULL){
+        fprintf(stderr, "RelationManager: calloc failed\n");
+        exit(1);
+    }
+    
     unsigned currId;
     RID nullRid;
     while(scanIterator->getNextRecord(nullRid, recordData) != RBFM_EOF){
