@@ -28,14 +28,23 @@ using namespace std;
 # define RM_EOF (-1)  // end of a scan operator
 
 // RM_ScanIterator is an iteratr to go through tuples
+// this is code provided by P.D. Febbo
 class RM_ScanIterator {
 public:
-  RM_ScanIterator() {};
-  ~RM_ScanIterator() {};
+    RM_ScanIterator() {};
+    RM_ScanIterator(RBFM_ScanIterator &r) {this->rbfm_SI = r;};
+    ~RM_ScanIterator() {};
 
-  // "data" follows the same format as RelationManager::insertTuple()
-  RC getNextTuple(RID &rid, void *data) { return RM_EOF; };
-  RC close() { return -1; };
+    // "data" follows the same format as RelationManager::insertTuple()
+    RC getNextTuple(RID &rid, void *data) {
+  	  return rbfm_SI.getNextRecord(rid, data);
+    };
+    RC close() {
+  	  return rbfm_SI.close();
+    };
+
+  private:
+    RBFM_ScanIterator rbfm_SI;
 };
 
 
@@ -103,8 +112,8 @@ private:
   static const unsigned columnTableId;
   static vector<Attribute> columnDescriptor;
   
-  RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor);
-  unsigned getValidCatalogID();
+  RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor, unsigned &tableId);
+  unsigned getValidCatalogID(); 
 };
 
 #endif
