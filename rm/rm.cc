@@ -344,7 +344,62 @@ RC RelationManager::deleteTable(const string &tableName)
         return 1;
     }
     
-    return -1;
+    string fileName;
+    vector<Attribute> getAttrs;
+    unsigned tableId;
+    if(getFileInfo(tableName, fileName, getAttrs, tableId) != SUCCESS){
+        fprintf(stderr, "RelationManager: table %s not found\n", tableName);
+        return 1;
+    }
+    
+    RBFM_ScanIterator rbf_iter = new RBFM_ScanIterator();
+    RM_ScanIterator rm_iter = new RM_ScanIterator(rbf_iter);
+    
+    RBFM_ScanIterator rbf_iter_tab = new RBFM_ScanIterator();
+    RM_ScanIterator rm_iter_tab = new RM_ScanIterator(rbf_iter_tab);
+    
+    
+    vector<string> projAttrs = {"tableId"};
+    
+    RID toDelId;
+    void* nullData = malloc(INT_SIZE);
+    
+    if(scan(tableTableName, "tableId", EQ_OP, &tableId, projAttrs, rm_iter) != SUCCESS){
+        fprintf(stderr, "RelationManager: table scan in deleteTables failed\n");
+        free(nullData);
+        return 2;
+    }
+    
+    if(rm_iter_tab.getNextTuple(toDelId, nullData) == RBFM_EOF){
+        fprintf(stderr, "RelationManager: No table entry found\n");
+        free(nullData);
+        return 3;
+        
+    }
+    if(deleteTuple(tableTableName, toDelId) != SUCCESS){
+        fprintf(stderr, "RelationManager: cannot remove table entry from catalog\n");
+        free(nullData);
+        return 3;
+    }
+    
+    if(scan(columnTableName, "tableId", EQ_OP, &tableId, projAttrs, rm_iter) != SUCCESS){
+        fprintf(stderr, "RelationManager: column scan in deleteTables failed\n");
+        free(nullData);
+        return 2;
+    }
+    
+    
+    while(rm_iter.getNextTuple(toDelId, nullData) != RBFM_EOF){
+        if(deleteTuple(columnTableName, toDelId) != SUCCESS{
+            fprintf(stderr, "RelationManager: cannot remove attribute entry from catalog\n");
+            free(nullData);
+            return 2;
+        }
+        
+    }
+    
+    free(nullData);
+    return 0;
 }
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
