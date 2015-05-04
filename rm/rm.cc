@@ -10,7 +10,10 @@
  * 
  * */
 
+#include<iostream>
+
 #include "rm.h"
+using namespace std;
 
 RelationManager* RelationManager::_rm = 0;
 const string RelationManager::tableTableFileName = "sys_table.table";
@@ -88,11 +91,16 @@ RelationManager* RelationManager::instance()
 
 	fprintf(stderr, "Table catalog attributes initialized\n");
         
-        FileHandle tableHandle;
+        FileHandle* tableHandle = new FileHandle();
         FileHandle colHandle;
+
+	//std::cout << "rm " << tableTableFileName << endl;
         
+	fprintf(stderr, "rm file name: %s\n", tableTableFileName.c_str());
+
         // If table catalog not found, create the catalog
-        if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
+        //if(_rbf_manager->openFile(RelationManager::tableTableFileName, *tableHandle) != SUCCESS){
+        if(_rbf_manager->openFile("sys_table.table", *tableHandle) != SUCCESS){
 	    fprintf(stderr, "Failed to open file\n");
             if(_rbf_manager->createFile(tableTableFileName) != SUCCESS){
                 fprintf(stderr, "Error: could not create table catalog\n");
@@ -102,7 +110,7 @@ RelationManager* RelationManager::instance()
 
 		fprintf(stderr,"file created\n");
             
-            if(_rbf_manager->openFile(tableTableFileName, tableHandle) != SUCCESS){
+            if(_rbf_manager->openFile(tableTableFileName, *tableHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open table catalog\n");
                 return 0;
             }
@@ -132,7 +140,7 @@ RelationManager* RelationManager::instance()
             tableTableFileName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
                 tableNameLength + VARCHAR_LENGTH_SIZE, tableFilenameLength, 0);
                 
-            _rm->_rbf_manager->insertRecord(tableHandle, tableDescriptor,
+            _rm->_rbf_manager->insertRecord(*tableHandle, tableDescriptor,
                 (void*)tableData, tableRID);
                 
             free(tableData);
@@ -175,7 +183,7 @@ RelationManager* RelationManager::instance()
             columnTableFileName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
                 colNameLength + VARCHAR_LENGTH_SIZE, colFNameLength, 0);
                 
-            _rbf_manager->insertRecord(tableHandle, tableDescriptor,
+            _rbf_manager->insertRecord(*tableHandle, tableDescriptor,
                 (void*)tableData, colTabRID);
                 
             free(tableData);
@@ -236,7 +244,7 @@ RelationManager* RelationManager::instance()
                 free(colRecord);
             }
             
-            if(_rbf_manager->closeFile(tableHandle) != SUCCESS){
+            if(_rbf_manager->closeFile(*tableHandle) != SUCCESS){
                 fprintf(stderr,"Error: Table table close failed\n");
                 return 0;
             }
@@ -253,6 +261,7 @@ RelationManager::RelationManager()
 {
     // initialize the internal RBFM
     _rbf_manager = RecordBasedFileManager::instance();
+	//tableTableFileName = "sys_table.table";
 }
 
 RelationManager::~RelationManager()

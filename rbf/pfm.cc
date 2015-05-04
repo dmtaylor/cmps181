@@ -85,14 +85,25 @@ RC PagedFileManager::destroyFile(const char *fileName)
 
 RC PagedFileManager::openFile(const char *fileName, FileHandle &fileHandle)
 {
-	fprintf(stderr, "pfm open file\n");	
+	fprintf(stderr, "pfm open file\n");
+	fprintf(stderr, "file name is %s\n", fileName);	
 	// Checks if fileHandle is already an handle for an open file.
 	if (fileHandle.getFileDescriptor() != NULL)
 		return 1;
+	
+	fprintf(stderr, "got file descriptor\n");
 
+//	string fileName_str;
+//	fileName_str = fileName;
+
+	string fileName_str (fileName);
+	fprintf(stderr, "converted c str to c++ str\n");
+	
 	// If file does not exist, error.
-	if (!FileExists(string(fileName)))
+	if (!FileExists(fileName_str))
 		return 2;
+
+	fprintf(stderr, "file does exist\n");
 
 	FILE * pFile;
 	pFile = fopen(fileName, "r+");
@@ -140,6 +151,7 @@ RC PagedFileManager::closeFile(FileHandle &fileHandle)
 // Checks if a file already exists.
 bool PagedFileManager::FileExists(string fileName)
 {
+    fprintf(stderr, "Checking file exists\n");	
     struct stat stFileInfo;
 
     if(stat(fileName.c_str(), &stFileInfo) == 0) return true;
@@ -235,6 +247,7 @@ void FileHandle::setFileDescriptor(FILE * fileDescriptor)
 
 FILE * FileHandle::getFileDescriptor()
 {
+	fprintf(stderr, "getting FD\n");
 	return _fileDescriptor;
 }
 
