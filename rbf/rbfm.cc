@@ -543,6 +543,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
    }      
    free(readRecordData); 
    free(page_data);
+   free(readAttributeData);
    return 0;
     
 }

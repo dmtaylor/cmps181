@@ -254,7 +254,8 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
     
     string resStr;
     vector<Attribute> resAttrs;
-    if(getFileInfo(tableName, resStr, resAttrs) == SUCCESS){
+    unsigned tableId;
+    if(getFileInfo(tableName, resStr, resAttrs, tableId) == SUCCESS){
         fprintf(stderr, "RelationManager: table %s already exists.\n", tableName.c_str());
         return 2;
     }
@@ -355,7 +356,8 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
     
     string fileName;
     vector<Attribute> getAttrs;
-    if(getFileInfo(tableName, fileName, getAttrs) != SUCCESS){
+    unsigned tableId;
+    if(getFileInfo(tableName, fileName, getAttrs, tableId) != SUCCESS){
         fprintf(stderr, "RelationManager: table %s not found\n", tableName);
         return 1;
     }
@@ -455,7 +457,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     
     string fileName;
     vector<Attribute> descriptor;
-    getFileInfo(tableName, fileName, descriptor);
+    unsigned tableId;
+    getFileInfo(tableName, fileName, descriptor, tableId);
     
     FileHandle tableHandle;
     if(_rbf_manager->openFile(fileName, tableHandle) != SUCCESS){
@@ -545,8 +548,9 @@ RC RelationManager::deleteTuples(const string &tableName){
 
 	vector<Attribute> descriptor;
     string tableFileName;
+    unsigned tableId;
 
-    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS){
+    if (getFileInfo(tableName, tableFileName, descriptor, tableId) != SUCCESS){
 		fprintf(stderr, "Error: RM-deleteTuples() Can not gt file info\n");
 		return 1;
 	}
@@ -578,8 +582,9 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
     
     vector<Attribute> descriptor;
     string tableFileName;
+    unsigned tableId;
 
-    if(getFileInfo(tableName, tableFileName, descriptor)!= SUCCESS){
+    if(getFileInfo(tableName, tableFileName, descriptor, tableId)!= SUCCESS){
 		fprintf(stderr, "RM: deleteTuple(): Could not get file info");
 		return 1;
 	}
@@ -614,8 +619,9 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     
 	vector<Attribute> descriptor;
     string tableFileName;
+    unsigned tableId;
 
-    if(getFileInfo(tableName, tableFileName, descriptor)!= SUCCESS){
+    if(getFileInfo(tableName, tableFileName, descriptor, tableId)!= SUCCESS){
 		fprintf(stderr, "RM: updateTuple(): Could not get file info");
 		return 1;
 	}
@@ -725,7 +731,8 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     
     string fileName;
     vector<Attribute> descriptor;
-    if(getFileInfo(tableName, fileName, descriptor) != SUCCESS){
+    unsigned tableId;
+    if(getFileInfo(tableName, fileName, descriptor, tableId) != SUCCESS){
         fprintf(stderr, "RelationManager: get file info failed\n");
         return 1;
     }
@@ -752,8 +759,9 @@ RC RelationManager::readAttribute(const string &tableName, const RID &rid, const
     
 	vector<Attribute> descriptor;
     string tableFileName;
+    unsigned tableId;
 
-    if (getFileInfo(tableName, tableFileName, descriptor) != SUCCESS){
+    if (getFileInfo(tableName, tableFileName, descriptor, tableId) != SUCCESS){
 		fprintf(stderr, "Error: RM-readAttribute() Can not get file info\n");
 		return 1;
 	}
@@ -791,7 +799,37 @@ RC RelationManager::scan(const string &tableName,
       const vector<string> &attributeNames,
       RM_ScanIterator &rm_ScanIterator)
 {
-    return -1;
+    if((tableName.compare(tableTableName) == 0) || (tableName.compare(columnTableName) == 0 )){
+        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        return 1;
+    }
+    
+    string fileName;
+    vector<Attribute> descriptor;
+    unsigned tableId;
+    if(getFileInfo(tableName, fileName, descriptor, tableId) != SUCCESS){
+        fprintf(stderr, "RelationManager: get file info failed\n");
+        return 1;
+    }
+    
+    FileHandle tableHandle;
+	if(_rbf_manager->openFile(fileName, tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM-readAttribute() openFile(tableFileName) failed\n");
+		return 1;
+	}
+    
+    if(_rbf_manager->scan(tableHandle, conditionAttribute, compOp, value, attributeNames,
+                          rm_ScanIterator.rbfm_SI) != SUCCESS){
+        fprintf(stderr, "RelationManager: rbf scan failed\n");
+        return 2;
+    }
+    
+    if (_rbf_manager->closeFile(tableHandle) != SUCCESS){
+		fprintf(stderr, "Error: RM: readAttribute(): closeFile(tableHandle) failed \n");
+		return 1;
+	}
+    
+    return 0;
 }
 
 // Extra credit
@@ -812,7 +850,7 @@ RC RelationManager::reorganizeTable(const string &tableName)
     return -1;
 }
 
-RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor){
+RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor, unsigned &tableId){
 	
 	FileHandle tableCatalogHandle;
     
@@ -839,7 +877,6 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     }
     
     unsigned nameSize;
-    unsigned tableId;
     char* fileName;
     
     memcpy(&nameSize, recordName, VARCHAR_LENGTH_SIZE);
