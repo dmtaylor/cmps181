@@ -500,7 +500,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
    
    //getting type of condition type
    vector<Attribute>::iterator attr_it = recordDescriptor.begin(); 
-   //auto attr_it = recordDescriptor.cbegin();
+ 
    for ( ; attr_it != recordDescriptor.end(); ++attr_it){
       if ((*attr_it).name == conditionAttribute){
          attr_type = (*attr_it).type;
