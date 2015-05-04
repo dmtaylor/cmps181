@@ -33,10 +33,10 @@ RelationManager* RelationManager::instance()
 {
     if(!_rm){
 
-	fprintf(stderr, "Creating New relation manager\n");
+	    fprintf(stderr, "Creating New relation manager\n");
         _rm = new RelationManager();
 
-	fprintf(stderr, "New manager made\n");
+	    fprintf(stderr, "New manager made\n");
         
         Attribute tableId;
         Attribute tableName;
@@ -54,13 +54,13 @@ RelationManager* RelationManager::instance()
         tableFName.type = TypeVarChar;
         tableFName.length = VARCHAR_LENGTH_SIZE;
 
-	fprintf(stderr, "Table catalog attributes initialized\n");
+	    fprintf(stderr, "Table catalog attributes initialized\n");
 
         _rm->tableDescriptor.push_back(tableId);
         _rm->tableDescriptor.push_back(tableName);
         _rm->tableDescriptor.push_back(tableFName);
 
-	fprintf(stderr, "Attributes added\n");
+	    fprintf(stderr, "Attributes added\n");
 
         Attribute colId; //tableID column is in
         Attribute colName;
@@ -82,27 +82,27 @@ RelationManager* RelationManager::instance()
         colLength.name = "columnLength";
         colLength.type = TypeInt;
         colLength.length = INT_SIZE;
-	fprintf(stderr, "Table catalog attributes initialized\n");
+	    fprintf(stderr, "Table catalog attributes initialized\n");
 
         _rm->columnDescriptor.push_back(colId);
         _rm->columnDescriptor.push_back(colName);
 		_rm->columnDescriptor.push_back(colType);
 		_rm->columnDescriptor.push_back(colLength);
 
-	fprintf(stderr, "Table catalog attributes initialized\n");
+	    fprintf(stderr, "Table catalog attributes initialized\n");
         
         FileHandle* tableHandle = new FileHandle();
         FileHandle colHandle;
 
-	//std::cout << "rm " << tableTableFileName << endl;
+	    //std::cout << "rm " << tableTableFileName << endl;
         
-	fprintf(stderr, "rm file name: %s\n", tableTableFileName.c_str());
+	    fprintf(stderr, "rm file name: %s\n", "sys_table.table".c_str());
 
         // If table catalog not found, create the catalog
         //if(_rbf_manager->openFile(RelationManager::tableTableFileName, *tableHandle) != SUCCESS){
         if(_rbf_manager->openFile("sys_table.table", *tableHandle) != SUCCESS){
 	    fprintf(stderr, "Failed to open file\n");
-            if(_rbf_manager->createFile(tableTableFileName) != SUCCESS){
+            if(_rbf_manager->createFile("sys_table.table") != SUCCESS){
                 fprintf(stderr, "Error: could not create table catalog\n");
                 return 0;
             }
@@ -110,7 +110,7 @@ RelationManager* RelationManager::instance()
 
 		fprintf(stderr,"file created\n");
             
-            if(_rbf_manager->openFile(tableTableFileName, *tableHandle) != SUCCESS){
+            if(_rbf_manager->openFile("sys_table.table", *tableHandle) != SUCCESS){
                 fprintf(stderr, "Error: could not open table catalog\n");
                 return 0;
             }
@@ -119,7 +119,7 @@ RelationManager* RelationManager::instance()
             RID tableRID;
             
             unsigned tableNameLength = "cat_table".length();
-            unsigned tableFilenameLength = tableTableFileName.length();
+            unsigned tableFilenameLength = "sys_table.table".length();
             
             //create the record to be inserted.
             char* tableData = (char*) calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
@@ -137,7 +137,7 @@ RelationManager* RelationManager::instance()
             memcpy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+tableNameLength,
                 &tableFilenameLength, VARCHAR_LENGTH_SIZE);
                 
-            tableTableFileName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
+            "sys_table.table".copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
                 tableNameLength + VARCHAR_LENGTH_SIZE, tableFilenameLength, 0);
                 
             _rm->_rbf_manager->insertRecord(*tableHandle, tableDescriptor,
