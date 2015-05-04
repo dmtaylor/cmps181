@@ -44,6 +44,7 @@ public:
     };
 
   private:
+    friend class RelationManager;
     RBFM_ScanIterator rbfm_SI;
 };
 
