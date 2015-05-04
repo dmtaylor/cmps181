@@ -353,24 +353,25 @@ RC RelationManager::deleteTable(const string &tableName)
     }
     
     RBFM_ScanIterator* rbf_iter = new RBFM_ScanIterator();
-    RM_ScanIterator* rm_iter = new RM_ScanIterator(rbf_iter);
+    RM_ScanIterator* rm_iter = new RM_ScanIterator(*rbf_iter);
     
     RBFM_ScanIterator* rbf_iter_tab = new RBFM_ScanIterator();
     RM_ScanIterator* rm_iter_tab = new RM_ScanIterator(*rbf_iter_tab);
     
     
-    vector<string> projAttrs {(string)"tableId"};
+    vector<string> projAttrs;
+    projAttrs.push_back("tableId");
     
     RID toDelId;
     void* nullData = malloc(INT_SIZE);
     
-    if(scan(tableTableName, "tableId", EQ_OP, &tableId, projAttrs, rm_iter) != SUCCESS){
+    if(scan(tableTableName, "tableId", EQ_OP, &tableId, projAttrs, *rm_iter) != SUCCESS){
         fprintf(stderr, "RelationManager: table scan in deleteTables failed\n");
         free(nullData);
         return 2;
     }
     
-    if(rm_iter_tab.getNextTuple(toDelId, nullData) == RBFM_EOF){
+    if(rm_iter_tab->getNextTuple(toDelId, nullData) == RBFM_EOF){
         fprintf(stderr, "RelationManager: No table entry found\n");
         free(nullData);
         return 3;
@@ -382,14 +383,14 @@ RC RelationManager::deleteTable(const string &tableName)
         return 3;
     }
     
-    if(scan(columnTableName, "tableId", EQ_OP, &tableId, projAttrs, rm_iter) != SUCCESS){
+    if(scan(columnTableName, "tableId", EQ_OP, &tableId, projAttrs, *rm_iter) != SUCCESS){
         fprintf(stderr, "RelationManager: column scan in deleteTables failed\n");
         free(nullData);
         return 2;
     }
     
     
-    while(rm_iter.getNextTuple(toDelId, nullData) != RBFM_EOF){
+    while(rm_iter->getNextTuple(toDelId, nullData) != RBFM_EOF){
         if(deleteTuple(columnTableName, toDelId) != SUCCESS){
             fprintf(stderr, "RelationManager: cannot remove attribute entry from catalog\n");
             free(nullData);
@@ -874,7 +875,7 @@ RC RelationManager::scan(const string &tableName,
 	}
     
     if(_rbf_manager->scan(tableHandle, conditionAttribute, compOp, value, attributeNames,
-                          *rm_ScanIterator.rbfm_SI) != SUCCESS){
+                          rm_ScanIterator->rbfm_SI) != SUCCESS){
         fprintf(stderr, "RelationManager: rbf scan failed\n");
         return 2;
     }
