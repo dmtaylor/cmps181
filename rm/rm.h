@@ -103,14 +103,14 @@ private:
   static RelationManager *_rm;
   static RecordBasedFileManager *_rbf_manager;
   // catalog file name information
-  static const string tableTableFileName;
-  static const string tableTableName;
-  static const unsigned tableTableId;
+  static /*const*/ string tableTableFileName;
+  static /*const*/ string tableTableName;
+  static /*const*/ unsigned tableTableId;
   static vector<Attribute> tableDescriptor;
   
-  static const string columnTableName;
-  static const string columnTableFileName;
-  static const unsigned columnTableId;
+  static /*const*/ string columnTableName;
+  static /*const*/ string columnTableFileName;
+  static /*const*/ unsigned columnTableId;
   static vector<Attribute> columnDescriptor;
   
   RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor, unsigned &tableId);

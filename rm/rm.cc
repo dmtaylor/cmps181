@@ -16,6 +16,7 @@
 using namespace std;
 
 RelationManager* RelationManager::_rm = 0;
+/*
 const string RelationManager::tableTableFileName = "sys_table.table";
 const string RelationManager::tableTableName = "cat_table";
 const unsigned RelationManager::tableTableId = 0;
@@ -24,7 +25,7 @@ vector<Attribute> RelationManager::tableDescriptor;
 const string RelationManager::columnTableName = "cat_cols";
 const string RelationManager::columnTableFileName = "sys_cols.table";
 const unsigned RelationManager::columnTableId = 1;
-vector<Attribute> RelationManager::columnDescriptor;
+vector<Attribute> RelationManager::columnDescriptor;*/
 
 RecordBasedFileManager* RelationManager::_rbf_manager;
 
@@ -32,11 +33,19 @@ RecordBasedFileManager* RelationManager::_rbf_manager;
 RelationManager* RelationManager::instance()
 {
     if(!_rm){
-
+        
 	    fprintf(stderr, "Creating New relation manager\n");
         _rm = new RelationManager();
-
+        
 	    fprintf(stderr, "New manager made\n");
+        
+        tableTableFileName = "sys_table.table";
+        tableTableName = "cat_table";
+        tableTableId = 0;
+        
+        columnTableName = "cat_cols";
+        columnTableFileName = "sys_cols.table";
+        columnTableId = 1;
         
         Attribute tableId;
         Attribute tableName;
@@ -96,7 +105,7 @@ RelationManager* RelationManager::instance()
 
 	    //std::cout << "rm " << tableTableFileName << endl;
         
-	    fprintf(stderr, "rm file name: %s\n", "sys_table.table".c_str());
+	    fprintf(stderr, "rm file name: %s\n", tableTableFileName.c_str());
 
         // If table catalog not found, create the catalog
         //if(_rbf_manager->openFile(RelationManager::tableTableFileName, *tableHandle) != SUCCESS){
@@ -118,8 +127,8 @@ RelationManager* RelationManager::instance()
             
             RID tableRID;
             
-            unsigned tableNameLength = "cat_table".length();
-            unsigned tableFilenameLength = "sys_table.table".length();
+            unsigned tableNameLength = tableTableName.length();
+            unsigned tableFilenameLength = tableTableFileName.length();
             
             //create the record to be inserted.
             char* tableData = (char*) calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
@@ -132,12 +141,12 @@ RelationManager* RelationManager::instance()
             // populate the table    
             memcpy(tableData, &tableTableId, INT_SIZE);
             memcpy(tableData + INT_SIZE, &tableNameLength, VARCHAR_LENGTH_SIZE);
-            "cat_table".copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE,
+            tableTableName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE,
                 tableNameLength, 0);
             memcpy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+tableNameLength,
                 &tableFilenameLength, VARCHAR_LENGTH_SIZE);
                 
-            "sys_table.table".copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
+            tableTableFileName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
                 tableNameLength + VARCHAR_LENGTH_SIZE, tableFilenameLength, 0);
                 
             _rm->_rbf_manager->insertRecord(*tableHandle, tableDescriptor,
@@ -163,8 +172,8 @@ RelationManager* RelationManager::instance()
             
             RID colTabRID;
             
-            unsigned colNameLength = "cat_cols".length();
-            unsigned colFNameLength = "sys_cols.table".length();
+            unsigned colNameLength = columnTableName.length();
+            unsigned colFNameLength = columnTableFileName.length();
             
             char* tableData = (char*) calloc(INT_SIZE + VARCHAR_LENGTH_SIZE +
                 colNameLength + VARCHAR_LENGTH_SIZE + colFNameLength ,1);
@@ -175,12 +184,12 @@ RelationManager* RelationManager::instance()
             
             memcpy(tableData, &columnTableId, INT_SIZE);
             memcpy(tableData + INT_SIZE, &colNameLength, VARCHAR_LENGTH_SIZE);
-            "cat_cols".copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE,
+            columnTableName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE,
                 colNameLength, 0);
             memcpy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+colNameLength,
                 &colFNameLength, VARCHAR_LENGTH_SIZE);
                 
-            "sys_cols.table".copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
+            columnTableFileName.copy(tableData + INT_SIZE+VARCHAR_LENGTH_SIZE+
                 colNameLength + VARCHAR_LENGTH_SIZE, colFNameLength, 0);
                 
             _rbf_manager->insertRecord(*tableHandle, tableDescriptor,
@@ -930,7 +939,7 @@ RC RelationManager::reorganizeTable(const string &tableName)
 
 RC RelationManager::getFileInfo(const string &tableName, string &tableFileName , vector<Attribute> &descriptor, unsigned &tableId){
 	
-	FileHandle* tableCatalogHandle;
+	FileHandle* tableCatalogHandle = new FileHandle();
     
     if(_rbf_manager->openFile("sys_table.table", *tableCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open file catalog\n");
@@ -946,7 +955,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 	_rbf_manager->scan(*tableCatalogHandle, tableDescriptor, "tableName", 
                        EQ_OP, &tableName, projAttributes , *scanIterator);
 
-	void* recordName;
+	void* recordName = malloc(1024);
     RID nullRid;
     
     if(scanIterator->getNextRecord(nullRid, recordName) == RBFM_EOF){
@@ -964,8 +973,9 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     memcpy(&tableId, (char*) recordName + VARCHAR_LENGTH_SIZE + nameSize, INT_SIZE);
     
     free(fileName);
+    free(recordName);
     scanIterator->close();
-    _rbf_manager->closeFile(tableCatalogHandle);
+    _rbf_manager->closeFile(*tableCatalogHandle);
     
     
     // get attributes for the table
@@ -985,7 +995,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
     _rbf_manager->scan(*colCatalogHandle, columnDescriptor, "colId", EQ_OP,
                        &tableId, colProjAttributes , *scanIterator);
                        
-    void* colRecord;
+    void* colRecord = malloc(1024);
     Attribute currAttr;
     unsigned currNameLen;
     char* currName;
@@ -998,6 +1008,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
         currName = (char*)calloc(currNameLen, 1);
         if(currName == NULL){
             fprintf(stderr, "RelationManager: calloc failed\n");
+            free(colRecord);
             exit(1);
         }
         
@@ -1012,7 +1023,8 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
         descriptor.push_back(currAttr);
         free(currName);
     }
-
+    
+    free(colRecord);
     scanIterator->close();
     _rbf_manager->closeFile(*colCatalogHandle);
     
@@ -1023,7 +1035,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 unsigned RelationManager::getValidCatalogID(){
     unsigned newId=1;
     
-    FileHandle* tableCatalogHandle;
+    FileHandle* tableCatalogHandle = new FileHandle();
     
     if(_rbf_manager->openFile("sys_table.table", *tableCatalogHandle) != SUCCESS){
         fprintf(stderr, "RM: could not open file catalog\n");
@@ -1035,7 +1047,7 @@ unsigned RelationManager::getValidCatalogID(){
 	projAttributes.push_back("tableID");
     RBFM_ScanIterator* scanIterator = new RBFM_ScanIterator(); 
 	_rbf_manager->scan(*tableCatalogHandle, tableDescriptor, "tableName", 
-                       NO_OP, &"cat_table", projAttributes , *scanIterator);
+                       NO_OP, &tableTableName, projAttributes , *scanIterator);
                        
     void* recordData = calloc(INT_SIZE, 1);
     if(recordData == NULL){
