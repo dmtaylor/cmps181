@@ -87,7 +87,7 @@ RC RecordBasedFileManager::destroyFile(const string &fileName) {
 }
 
 RC RecordBasedFileManager::openFile(const string &fileName, FileHandle &fileHandle) {
-	fprintf(stderr, "rbfm file name: %s\n", fileName.c_str());
+	fprintf(stderr, "rbfm.cc: openFile() fileName = %s\n", fileName.c_str());
 	return _pf_manager->openFile(fileName.c_str(), fileHandle);
 }
 
