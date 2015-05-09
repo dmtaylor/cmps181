@@ -103,16 +103,19 @@ private:
   static RelationManager *_rm;
   static RecordBasedFileManager *_rbf_manager;
   // catalog file name information
-  static /*const*/ string tableTableFileName;
-  static /*const*/ string tableTableName;
-  static /*const*/ unsigned tableTableId;
-  static vector<Attribute> tableDescriptor;
+  /*static const*/ string tableTableFileName;
+  /*static const*/ string tableTableName;
+  /*static const*/ unsigned tableTableId;
+  /*static*/ vector<Attribute> tableDescriptor;
   
-  static /*const*/ string columnTableName;
-  static /*const*/ string columnTableFileName;
-  static /*const*/ unsigned columnTableId;
-  static vector<Attribute> columnDescriptor;
+  /*static const*/ string columnTableName;
+  /*static const*/ string columnTableFileName;
+  /*static const*/ unsigned columnTableId;
+  /*static */vector<Attribute> columnDescriptor;
   
+  RC systemInsertTuple(const string &tableName, const void *data, RID &rid);
+  RC systemTablesInsertTuple(const void *data, RID &rid);
+  RC systemColumnsInsertTuple(const void *data, RID &rid);
   RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor, unsigned &tableId);
   unsigned getValidCatalogID(); 
 };

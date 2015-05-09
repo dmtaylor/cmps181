@@ -55,9 +55,10 @@ PagedFileManager::~PagedFileManager()
 RC PagedFileManager::createFile(const char *fileName)
 {
 	// If file already exists, error.
-	if (FileExists(string(fileName)))
+	if (FileExists(string(fileName))){
+		fprintf(stderr, "pfm.createFile(): '%s' is already a fileName", fileName);
 		return 1;
-
+	}
     FILE * pFile;
 	pFile = fopen(fileName, "w");
 	if (pFile == NULL)
@@ -69,6 +70,7 @@ RC PagedFileManager::createFile(const char *fileName)
 		return 3;
 
 	fclose (pFile);
+	fprintf(stderr, "pfm.createFile(): '%s' SUCESSFULLY CREATED\n", fileName);
 	return 0;
 }
 
@@ -85,32 +87,33 @@ RC PagedFileManager::destroyFile(const char *fileName)
 
 RC PagedFileManager::openFile(const char *fileName, FileHandle &fileHandle)
 {
-	fprintf(stderr, "pfm open file\n");
-	fprintf(stderr, "file name is %s\n", fileName);	
+	fprintf(stderr, "pfm.openFile() fileName = %s\n", fileName);
+	//fprintf(stderr, "file name is %s\n", fileName);	
 	// Checks if fileHandle is already an handle for an open file.
 	if (fileHandle.getFileDescriptor() != NULL)
 		return 1;
 	
-	fprintf(stderr, "got file descriptor\n");
+	fprintf(stderr, "pfm.openFile() got file descriptor for %s successfully.\n", fileName);
 
 //	string fileName_str;
 //	fileName_str = fileName;
 
 	string fileName_str (fileName);
-	fprintf(stderr, "converted c str to c++ str\n");
+	//fprintf(stderr, "pfm.openFile() converted %s c str to c++ str successfully\n", fileName);
 	
 	// If file does not exist, error.
 	if (!FileExists(fileName_str))
 		return 2;
 
-	fprintf(stderr, "file does exist\n");
+	//fprintf(stderr, "%s does exist\n", fileName);
 
 	FILE * pFile;
 	pFile = fopen(fileName, "r+");
-	if (pFile == NULL)
+	if (pFile == NULL){
 		// File open error.
+		fprintf(stderr, "pfm.openFile() pFile failed to open\n.");
 		return 3;
-
+	}
 	// Check if the file is actually a paged file by looking at its header.
 	char headerCheck[PAGED_FILE_HEADER_STRING_LENGTH + 1];
 	fgets(headerCheck, PAGED_FILE_HEADER_STRING_LENGTH + 1, pFile);
@@ -118,12 +121,14 @@ RC PagedFileManager::openFile(const char *fileName, FileHandle &fileHandle)
 	{
 		// Not a page file, close it + error.
 		fclose(pFile);
+		fprintf(stderr, "pfm.openFile() pFile is not a paged file.\n");
 		return 4;
 	}
 
 	// Else, it is a page file. Put its descriptor into the fileHandle.
 	fileHandle.setFileDescriptor(pFile);
-
+	fprintf(stderr, "pfm.openFile() %s SUCCESSFULLY OPENED.\n", fileName);
+	
 	return 0;
 }
 
@@ -151,11 +156,17 @@ RC PagedFileManager::closeFile(FileHandle &fileHandle)
 // Checks if a file already exists.
 bool PagedFileManager::FileExists(string fileName)
 {
-    fprintf(stderr, "Checking file exists\n");	
+    fprintf(stderr, "pfm.FileExists(): Checking if fileName = '%s' exists\n", fileName.c_str());	
     struct stat stFileInfo;
 
-    if(stat(fileName.c_str(), &stFileInfo) == 0) return true;
-    else return false;
+    if(stat(fileName.c_str(), &stFileInfo) == 0){
+	fprintf(stderr, "pfm.FileExists(): '%s' already exists.\n", fileName.c_str());
+	return true;
+    }
+    else{
+	fprintf(stderr, "pfm.FileExists(): '%s' does not exist.\n", fileName.c_str());
+	return false;
+    }
 }
 
 // ------------------------------------------------------------
@@ -247,7 +258,7 @@ void FileHandle::setFileDescriptor(FILE * fileDescriptor)
 
 FILE * FileHandle::getFileDescriptor()
 {
-	fprintf(stderr, "getting FD\n");
+	//fprintf(stderr, "pfm.getFileDescriptor() getting FD\n");
 	return _fileDescriptor;
 }
 

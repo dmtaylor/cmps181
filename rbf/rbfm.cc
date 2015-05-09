@@ -64,9 +64,11 @@ void RecordBasedFileManager::newRecordBasedPage(void * page)
 
 RC RecordBasedFileManager::createFile(const string &fileName) {
     // Creating a new paged file.
-	if (_pf_manager->createFile(fileName.c_str()) != SUCCESS)
+	fprintf(stderr, "rbfm.createFile() creating '%s'\n", fileName.c_str());
+	if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
+		fprintf(stderr, "rbfm.createFile(): PFM.createFile() FAILED");
 		return 1;
-
+	}
 	// Setting up the first page.
 	void * firstPageData = malloc(PAGE_SIZE);
 	newRecordBasedPage(firstPageData);
@@ -78,7 +80,7 @@ RC RecordBasedFileManager::createFile(const string &fileName) {
 	_pf_manager->closeFile(handle);
 
 	free(firstPageData);
-
+	fprintf(stderr, "rbfm.createFile() '%s' SUCCESFULLY CREATED (AND CLOSED)\n", fileName.c_str());
 	return 0;
 }
 
@@ -452,12 +454,12 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 
 // ReachGoal: our attempt at regorganize page
 // Reorganizes page to get more space
-/*
+
 RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
           const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
         //TODO
     
-    void* pageData = malloc(PAGE_SIZE);
+    /*void* pageData = malloc(PAGE_SIZE);
     if (fileHandle.readPage(pageNumber, pageData) != SUCCESS){
 		return 1;
     }
@@ -470,13 +472,13 @@ RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
 
   
     
-    }  
+    }*/ 
     
     
-    return -1;
+    return 0;
     
 }
-*/
+
 
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle,
