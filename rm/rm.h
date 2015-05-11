@@ -103,14 +103,14 @@ private:
   static RelationManager *_rm;
   static RecordBasedFileManager *_rbf_manager;
   // catalog file name information
-  /*static const*/ string tableTableFileName;
-  /*static const*/ string tableTableName;
-  /*static const*/ unsigned tableTableId;
+  /*static const*/ string tableTableFileName = "sys_table.table";
+  /*static const*/ string tableTableName = "cat_table";
+  /*static const*/ unsigned tableTableId = 0;
   /*static*/ vector<Attribute> tableDescriptor;
   
-  /*static const*/ string columnTableName;
-  /*static const*/ string columnTableFileName;
-  /*static const*/ unsigned columnTableId;
+  /*static const*/ string columnTableName = "cat_cols";
+  /*static const*/ string columnTableFileName= "sys_cols.table";
+  /*static const*/ unsigned columnTableId = 1;
   /*static */vector<Attribute> columnDescriptor;
   
   RC systemInsertTuple(const string &tableName, const void *data, RID &rid);

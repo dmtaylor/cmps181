@@ -444,7 +444,7 @@ RC RelationManager::deleteTable(const string &tableName)
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
 {
     if((tableName.compare("cat_table") == 0) || (tableName.compare("cat_cols") == 0 )){
-        fprintf(stderr, "RelationManager: Invalid table name, %s is a reserved table.\n", tableName.c_str());
+        fprintf(stderr, "RM:getAttributes() Invalid table name, %s is a reserved table.\n", tableName.c_str());
         return 1;
     }
     
@@ -452,8 +452,8 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
     vector<Attribute> getAttrs;
     unsigned tableId;
     if(getFileInfo(tableName, fileName, getAttrs, tableId) != SUCCESS){
-        fprintf(stderr, "RelationManager: table %s not found\n", tableName.c_str());
-        return 1;
+        fprintf(stderr, "RM:getAttributes() table %s not found\n", tableName.c_str());
+        return 1; //changed from 1
     }
     attrs = getAttrs;
     return 0;
@@ -746,7 +746,7 @@ RC RelationManager::readAttribute(const string &tableName, const RID &rid, const
 }
 
 
-//"optional"- Sr. Paolo
+//"optional"- Paolo
 RC RelationManager::reorganizePage(const string &tableName, const unsigned pageNumber)
 {
     return 0;
@@ -836,12 +836,20 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
 
     //Not finding cat_table in sys_table.table after successfully opening!
     if(scanIterator->getNextRecord(nullRid, recordName) == RBFM_EOF){
-        fprintf(stderr, "RelationManager.getFileInfo(): table %s not found\n", tableName.c_str());
+        fprintf(stderr, "RM.getFileInfo(): table %s not found\n", tableName.c_str());
         _rbf_manager->closeFile(*tableCatalogHandle);
-        return 2;
-        //close files bc returns here if table doesn't exist.
+        return 1;  //changed from 1 to pass rmtest_00
     }
-    
+
+
+/*
+	//RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor, const void *data) {
+	while(scanIterator->getNextRecord(nullRid, recordName) != RBFM_EOF){
+		_rbf_manager->printRecord();
+		//if correct record break
+	}
+*/  
+  
     unsigned nameSize;
     char* fileName;
     
@@ -886,7 +894,7 @@ RC RelationManager::getFileInfo(const string &tableName, string &tableFileName ,
         memcpy(&currNameLen, colRecord, VARCHAR_LENGTH_SIZE);
         currName = (char*)calloc(currNameLen, 1);
         if(currName == NULL){
-            fprintf(stderr, "RelationManager.getFileInfo(): calloc failed\n");
+            fprintf(stderr, "RM.getFileInfo(): calloc failed\n");
             free(colRecord);
             exit(1);
         }
@@ -930,7 +938,7 @@ unsigned RelationManager::getValidCatalogID(){
                        
     void* recordData = calloc(INT_SIZE, 1);
     if(recordData == NULL){
-        fprintf(stderr, "RelationManager.getValidCatalogID(): calloc failed\n");
+        fprintf(stderr, "RM.getValidCatalogID(): calloc failed\n");
         exit(1);
     }
     
@@ -956,21 +964,21 @@ RC RelationManager::systemTablesInsertTuple(const void *data, RID &rid){
     vector<Attribute> descriptor = _rm->tableDescriptor;
     unsigned tableId = 0;
     //getFileInfo(tableName, fileName, descriptor, tableId);
-    fprintf(stderr, "RelationManager.systemTablesInsertTuple(): sys insert filename = %s\n",fileName.c_str());
+    fprintf(stderr, "RM.systemTablesInsertTuple(): sys insert filename = %s\n",fileName.c_str());
     
     FileHandle* tableHandle = new FileHandle();
     if(_rbf_manager->openFile(fileName, *tableHandle) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemTableInsertTuple(): could not open table file\n");
+        fprintf(stderr, "RM.systemTableInsertTuple(): could not open table file\n");
         return 1;
     }
     
     if(_rbf_manager->insertRecord(*tableHandle, descriptor, data, rid) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemTableInsertTuple(): tuple insert failed\n");
+        fprintf(stderr, "RM.systemTableInsertTuple(): tuple insert failed\n");
         return 2;
     }
 
     if(_rbf_manager->closeFile(*tableHandle) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemTableInsertTuple(): could not close table file\n");
+        fprintf(stderr, "RM.systemTableInsertTuple(): could not close table file\n");
         return 1;
     }
     
@@ -983,21 +991,21 @@ RC RelationManager::systemColumnsInsertTuple(const void *data, RID &rid){
     vector<Attribute> descriptor = _rm->columnDescriptor;
     unsigned tableId = 1;
     //getFileInfo(tableName, fileName, descriptor, tableId);
-    fprintf(stderr, "RelationManager.systemColumnInsertTuple(): sys insert filename = %s\n",fileName.c_str());
+    fprintf(stderr, "RM.systemColumnInsertTuple(): sys insert filename = %s\n",fileName.c_str());
     
     FileHandle* tableHandle = new FileHandle();
     if(_rbf_manager->openFile(fileName, *tableHandle) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemColumnInsertTuple(): could not open table file\n");
+        fprintf(stderr, "RM.systemColumnInsertTuple(): could not open table file\n");
         return 1;
     }
     
     if(_rbf_manager->insertRecord(*tableHandle, descriptor, data, rid) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemColumnInsertTuple(): tuple insert failed\n");
+        fprintf(stderr, "RM.systemColumnInsertTuple(): tuple insert failed\n");
         return 2;
     }
 
     if(_rbf_manager->closeFile(*tableHandle) != SUCCESS){
-        fprintf(stderr, "RelationManager.systemColumnInsertTuple(): could not close table file\n");
+        fprintf(stderr, "RM.systemColumnInsertTuple(): could not close table file\n");
         return 1;
     }
     

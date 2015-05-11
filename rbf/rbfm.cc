@@ -556,7 +556,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
 //returns 1 if void* agrs pass comparison
 // i.e. ae part of the return set, if notreturns 0
 unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, const void* cmpTo){
-    
+    cout << "RBFM.OpCompare BEGINNING" << endl;
     size_t size;
     unsigned rc = 0;
     int res;
@@ -611,7 +611,7 @@ unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, c
             fprintf(stderr, "opCompare: invalid compOp\n");
             return 0;
     }
-    
+    cout<<"RBFM.OpCompare SUCCESSFULLY COMPLETED" << endl;
     return rc;
 }
 
@@ -627,7 +627,7 @@ RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribu
    unsigned varCharSize = 0;
    unsigned attr_size;
    
-   
+   cout<<"RBFM.rbfmProject BEGINNING" << endl;
 
    for ( ; proj_it != projectedNames.end(); ++proj_it){
       attr_offset = 0;
@@ -685,6 +685,7 @@ RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribu
    scan_it.records.push_back(to_insert);
    scan_it.sizes.push_back(pattr_offset);
    scan_it.rids.push_back(rid);
+ cout<<"RBFM.rbfmProject SUCCESSFULLY done" << endl;
 
    return 0;
 }
