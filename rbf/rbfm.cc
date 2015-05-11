@@ -480,7 +480,7 @@ RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
 }
 
 
-
+//RC printRecord(const vector<Attribute> &recordDescriptor, const void *data);
 RC RecordBasedFileManager::scan(FileHandle &fileHandle,
     vector<Attribute> recordDescriptor,
     const string &conditionAttribute,
@@ -527,19 +527,24 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
 
          curr_rid.slotNum = k;
          entry = getSlotDirectoryRecordEntry(page_data, k);
-
+	 
          if (entry.status == Active){
-           
+
+            fprintf(stderr, "RBFM.scan() found an active record!\n");
+
 	    if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
 	       return 1;
+
+		printRecord(recordDescriptor, readRecordData);
 
             if (readAttribute(fileHandle, recordDescriptor, curr_rid, conditionAttribute, readAttributeData) != SUCCESS)
 	       return 1;            
 
             //loads record into ScanIterator, if comparison returns 1, using project function
-            if ( opCompare(readAttributeData, attr_type, compOp, value) == 1) 
+            if ( opCompare(readAttributeData, attr_type, compOp, value) == 1){ 
+		fprintf(stderr, "opCompare PASSED!! ENTERING rbfmProject()\n");	
                rbfmProject(rbfm_ScanIterator, recordDescriptor, attributeNames, readRecordData, curr_rid);               
-
+	   }
                               
          }
       }
