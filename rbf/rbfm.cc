@@ -583,7 +583,7 @@ unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, c
         res = memcmp(in, cmpTo, size);
     }
     else if(type == TypeVarChar){
-        res = strcmp((char*) in, (char*) cmpTo);
+        res = strcmp((char*) in + VARCHAR_LENGTH_SIZE, (char*) cmpTo);
     }
     else{
         fprintf(stderr, "opCompare: invalid type for args\n");
@@ -712,4 +712,3 @@ RC RBFM_ScanIterator::close(){
    delete this;
    return 0;
 }
-
