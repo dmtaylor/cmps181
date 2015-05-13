@@ -21,17 +21,14 @@ Given instructions
 Project 2 Notes
 ---------------
 
-Dated 2015-5-4
+Dated 2015-5-11
 
-For project 2 we ran into lots of problems, so the code submitted might have
-some issues compiling and running. We omitted implementations of reorganize page,
-under advisement that they were optional. As such, this database is very
-disk-space inefficient. All other functions should be implemented, but many
-have been untested due to build and other issues.
+We closely followed Paolo's advised design for project 2.
 
-I would expect a revised version to be resubmitted. There are several sections
-of old code commented out, we decided to leave them in in case we needed them later;
-just ignore them.
+We omitted implementations of reorganize page, under advisement that 
+they were optional. As such, this database is very disk-space inefficient. 
+All other functions are implemented, but many are  untested due to the 
+problem with scan.
 
 Joke(2): A SQL query goes into a bar, walks up to two tables and asks, "Can I join you?"
 
