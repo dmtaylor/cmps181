@@ -11,6 +11,16 @@
 
 class IX_ScanIterator;
 
+typedef struct
+{
+  unsigned freeSpaceOffset;
+  unsigned numberOfRecords;
+  unsigned firstRecordOffset;
+  unsigned parentPage;
+  unsigned nextPage;
+  bool is_leaf;
+} IndexPageHeader;
+
 class IndexManager {
  public:
   static IndexManager* instance();
@@ -51,6 +61,10 @@ class IndexManager {
 
  private:
   static IndexManager *_index_manager;
+  void newIndexBasedPage(void * page);
+
+
+
 };
 
 class IX_ScanIterator {

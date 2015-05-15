@@ -21,7 +21,26 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-	return -1;
+/*
+  if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
+		fprintf(stderr, "rbfm.createFile(): PFM.createFile() FAILED");
+		return 1;
+	}
+
+	// Setting up the first page.
+	void * firstPageData = malloc(PAGE_SIZE);
+	newIndexBasedPage(firstPageData);
+
+	// Adds the first record based page.
+	FileHandle handle;
+	_pf_manager->openFile(fileName.c_str(), handle);
+	handle.appendPage(firstPageData);
+	_pf_manager->closeFile(handle);
+
+	free(firstPageData);
+*/
+	return 0;
+
 }
 
 RC IndexManager::destroyFile(const string &fileName)
@@ -60,6 +79,15 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	return -1;
 }
 
+void IndexManager::newIndexBasedPage(void * page){
+
+/*
+  IndexPageHeader indexHeader;
+  slotHeader.freeSpaceOffset = PAGE_SIZE;
+*/  
+ 
+}
+
 IX_ScanIterator::IX_ScanIterator()
 {
 }
@@ -81,3 +109,5 @@ RC IX_ScanIterator::close()
 void IX_PrintError (RC rc)
 {
 }
+
+
