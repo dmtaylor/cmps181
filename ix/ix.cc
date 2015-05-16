@@ -17,6 +17,7 @@
 #include <string.h>
 
 IndexManager* IndexManager::_index_manager = 0;
+PagedFileManager* IndexManager::_pf_manager = 0;
 
 IndexManager* IndexManager::instance()
 {
@@ -38,7 +39,7 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-
+	// Creating a new paged file.
   if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
 		fprintf(stderr, "IX.createFile(): PFM.createFile() FAILED");
 		return 1;
@@ -96,7 +97,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	return -1;
 }
 
-void IndexManager::newIndexBasedPage(void * page){
+//isLeaf == 1 means "is leaf".
+void IndexManager::newIndexBasedPage(void * page, char isLeaf){
 
 /*
 	SlotDirectoryHeader slotHeader;
@@ -105,15 +107,19 @@ void IndexManager::newIndexBasedPage(void * page){
 	setSlotDirectoryHeader(page, slotHeader);
 */
   IndexPageHeader indexHeader;
-  slotHeader.freeSpaceOffset = PAGE_SIZE;
+  indexHeader.freeSpaceOffset = PAGE_SIZE;
 	indexHeader.numberOfRecords = 0;
+	if (isLeaf) 
+		indexHeader.isLeaf = 1;
+	else 
+		indexHeader.isLeaf = 0;
  
 }
 
-void IndexManager::setIndexHeader(void * page, IndexHeader indexHeader)
+void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
 {
 	// Setting the slot directory header.
-	memcpy (page, &slotHeader, sizeof(indexHeader));
+	memcpy (page, &indexHeader, sizeof(indexHeader));
 }
 
 IX_ScanIterator::IX_ScanIterator()

@@ -23,6 +23,7 @@
 
 class IX_ScanIterator;
 
+
 typedef struct
 {
   unsigned freeSpaceOffset;
@@ -30,7 +31,7 @@ typedef struct
   unsigned firstRecordOffset;
   unsigned parentPage;
   unsigned nextPage;
-  bool is_leaf;
+  char isLeaf;
 } IndexPageHeader;
 
 class IndexManager {
@@ -76,7 +77,7 @@ class IndexManager {
 	static PagedFileManager *_pf_manager;
 
   void newIndexBasedPage(void * page);
-	void setIndexHeader(void * page, IndexHeader indexHeader);
+	void setIndexHeader(void * page, IndexPageHeader indexHeader);
 
 
 
