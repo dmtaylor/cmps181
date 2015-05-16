@@ -15,9 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 IndexManager* IndexManager::_index_manager = 0;
-PagedFileManager* IndexManager::_pf_manager = 0;
 
 IndexManager* IndexManager::instance()
 {
@@ -39,7 +39,7 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-	// Creating a new paged file.
+
   if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
 		fprintf(stderr, "IX.createFile(): PFM.createFile() FAILED");
 		return 1;
@@ -47,7 +47,7 @@ RC IndexManager::createFile(const string &fileName)
 
 	// Setting up the first page(leaf).
 	void * firstPageData = malloc(PAGE_SIZE);
-	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
+	newIndexBasedPage(firstPageData);
 
 	// Adds the first index based page.
 	FileHandle handle;
@@ -78,7 +78,6 @@ RC IndexManager::closeFile(FileHandle &fileHandle)
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-
 
 	IndexPageHeader indexHeader; 
 	unsigned i;
@@ -134,30 +133,28 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	return -1;
 }
 
+
 //isLeaf == 1 means "is leaf". 1=yes, 0=no
 void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next){
 
-/*
-	SlotDirectoryHeader slotHeader;
-	slotHeader.freeSpaceOffset = PAGE_SIZE;
-	slotHeader.recordEntriesNumber = 0;
-	setSlotDirectoryHeader(page, slotHeader);
-*/
+
   IndexPageHeader indexHeader;
-  indexHeader.freeSpaceOffset = sizeof(IndexPageHeader);
+  slotHeader.freeSpaceOffset = PAGE_SIZE;
 	indexHeader.numberOfRecords = 0;
+
 	indexHeader.firstRecordOffset = sizeof(IndexPageHeader);
 
 	indexHeader.isLeaf = isLeaf;
 	indexHeader.parentPage = parent;
 	indexHeader.nextPage = next;
 	setIndexHeader(page, indexHeader);
+
 }
 
-void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
+void IndexManager::setIndexHeader(void * page, IndexHeader indexHeader)
 {
 	// Setting the slot directory header.
-	memcpy (page, &indexHeader, sizeof(indexHeader));
+	memcpy (page, &slotHeader, sizeof(indexHeader));
 }
 
 IndexPageHeader IndexManager::getIndexHeader(void * page)
@@ -188,5 +185,44 @@ RC IX_ScanIterator::close()
 void IX_PrintError (RC rc)
 {
 }
+
+void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum){
+    // First we find the length of the key
+    uint32_t keyLength;
+    if(attribute.type == TypeInt){
+        keyLength = INT_SIZE;
+    }
+    else if(attribute.type == TypeReal){
+        keyLength = REAL_SIZE;
+    }
+    else if(attribute.type == TypeVarChar){
+        memcpy(&keyLength, key, VARCHAR_LENGTH_SIZE);
+        keyLength += VARCHAR_LENGTH_SIZE;
+    }
+    else{
+        fprintf(stderr, "IndexManager.formatRecord: Invalid attribute type for new record\n");
+        return NULL;
+    }
+    
+    // Now, we create the new record
+    void* recordPtr = calloc(keylength + REC_RID_SIZE + REC_TYPE_SIZE +
+        REC_CHLDPTR_SIZE + REC_NXTREC_SIZE + REC_ACTIVE_SIZE, 1);
+    if(recordPtr == NULL){
+        fprintf(stderr, "IndexManager.formatRecord: calloc failed, crashing now\n");
+        exit(1);
+    }
+    
+    // set the fields of the record
+    memset((char*) recordPtr + REC_ACTIVE_OFF, 1, REC_ACTIVE_SIZE);
+    memcpy((char*) recordPtr + REC_NXTREC_OFF, &next_offset, REC_NXTREC_SIZE);
+    memcpy((char*) recordPtr + REC_CHLDPTR_OFF, &childPageNum, REC_CHLDPTR_SIZE);
+    memcpy((char*) recordPtr + REC_TYPE_OFF, &attribute.type, REC_TYPE_SIZE);
+    memcpy((char*) recordPtr + REC_RID_OFF, &val, REC_RID_SIZE);
+    memcpy((char*) recordPtr + REC_KEY_OFF, key, keyLength);
+    
+    //return record
+    return recordPtr;
+}
+
 
 

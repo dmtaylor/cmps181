@@ -21,9 +21,20 @@
 
 # define IX_EOF (-1)  // end of the index scan
 #define IX_NULL_PAGE (-1) // To indicate a null page
+#define REC_ACTIVE_OFF 0
+#define REC_NXTREC_OFF 1
+#define REC_CHLDPTR_OFF 5
+#define REC_TYPE_OFF 9
+#define REC_RID_OFF 13
+#define REC_KEY_OFF 21
+
+#define REC_ACTIVE_SIZE 1
+#define REC_NXTREC_SIZE 4
+#define REC_CHLDPTR_SIZE 4
+#define REC_TYPE_SIZE 4
+#define REC_RID_SIZE 8
 
 class IX_ScanIterator;
-
 
 typedef struct
 {
@@ -32,7 +43,7 @@ typedef struct
   unsigned firstRecordOffset;
   unsigned parentPage;
   unsigned nextPage;
-  char isLeaf;
+  bool is_leaf;
 } IndexPageHeader;
 
 class IndexManager {
@@ -74,12 +85,14 @@ class IndexManager {
   ~IndexManager  ();                            // Destructor
 
  private:
-  static IndexManager *_index_manager;
+    static IndexManager *_index_manager;
 	static PagedFileManager *_pf_manager;
 
   void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 	void setIndexHeader(void * page, IndexPageHeader indexHeader);
 	IndexPageHeader getIndexHeader(void * page);
+    void* formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum);
+
 
 
 
