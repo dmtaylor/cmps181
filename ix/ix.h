@@ -77,7 +77,7 @@ class IndexManager {
   static IndexManager *_index_manager;
 	static PagedFileManager *_pf_manager;
 
-  void newIndexBasedPage(void * page);
+  void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 	void setIndexHeader(void * page, IndexPageHeader indexHeader);
 
 

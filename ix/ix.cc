@@ -47,7 +47,7 @@ RC IndexManager::createFile(const string &fileName)
 
 	// Setting up the first page.
 	void * firstPageData = malloc(PAGE_SIZE);
-	newIndexBasedPage(firstPageData);
+	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
 
 	// Adds the first record based page.
 	FileHandle handle;
@@ -78,6 +78,9 @@ RC IndexManager::closeFile(FileHandle &fileHandle)
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
+
+	
+
 	return -1;
 }
 
@@ -98,7 +101,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 }
 
 //isLeaf == 1 means "is leaf".
-void IndexManager::newIndexBasedPage(void * page, char isLeaf){
+void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next){
 
 /*
 	SlotDirectoryHeader slotHeader;
@@ -107,13 +110,20 @@ void IndexManager::newIndexBasedPage(void * page, char isLeaf){
 	setSlotDirectoryHeader(page, slotHeader);
 */
   IndexPageHeader indexHeader;
-  indexHeader.freeSpaceOffset = PAGE_SIZE;
+  indexHeader.freeSpaceOffset = sizeof(IndexPageHeader);
 	indexHeader.numberOfRecords = 0;
+	indexHeader.firstRecordOffset = sizeof(IndexPageHeader);
+
 	if (isLeaf) 
 		indexHeader.isLeaf = 1;
 	else 
 		indexHeader.isLeaf = 0;
+
+	indexHeader.parentPage = parent;
+	indexHeader.nextPage = next;
+	
  
+	setIndexHeader(page, indexHeader);
 }
 
 void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
