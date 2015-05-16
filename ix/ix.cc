@@ -104,18 +104,31 @@ RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute,
 
 	}
 
+
 /*
-	unsigned k = 1;
+	
+	void * record;
+	unsigned recordNumber;
+	unsigned nextRecordOffset;
+	unsigned destinationPage;	
+	int memcmp;
+
 	//Geting to correct leafnode from root
 	while (!indexHeader.isLeaf){
-		while(k < indexHeader.numberOfRecords){
+		
+		record = curr + indexHeader.firstRecordOffset;
+		recordNumber = 1;		
+
+		while(recordNumber < indexHeader.numberOfRecords){
+			nextRecordOffset = r	
 			
+			memcmp = memcmp(key, );
 
 		}
 						
 	}		
-
 */
+
 
 	return 0;
 }
