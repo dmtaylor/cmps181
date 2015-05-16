@@ -62,17 +62,17 @@ RC IndexManager::createFile(const string &fileName)
 
 RC IndexManager::destroyFile(const string &fileName)
 {
-	return -1;
+	return _pf_manager->destroyFile(fileName.c_str());
 }
 
 RC IndexManager::openFile(const string &fileName, FileHandle &fileHandle)
 {
-	return -1;
+    return _pf_manager->openFile(fileName.c_str(), fileHandle);
 }
 
 RC IndexManager::closeFile(FileHandle &fileHandle)
 {
-	return -1;
+    return _pf_manager->closeFile(fileHandle);
 }
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
