@@ -43,7 +43,7 @@ typedef struct
   unsigned firstRecordOffset;
   unsigned parentPage;
   unsigned nextPage;
-  bool is_leaf;
+  bool isLeaf;
 } IndexPageHeader;
 
 class IndexManager {

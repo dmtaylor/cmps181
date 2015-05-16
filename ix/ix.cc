@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 IndexManager* IndexManager::_index_manager = 0;
+PagedFileManager* IndexManager::_pf_manager = 0;
 
 IndexManager* IndexManager::instance()
 {
@@ -37,6 +38,7 @@ IndexManager::~IndexManager()
 {
 }
 
+//void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 RC IndexManager::createFile(const string &fileName)
 {
 
@@ -47,7 +49,7 @@ RC IndexManager::createFile(const string &fileName)
 
 	// Setting up the first page(leaf).
 	void * firstPageData = malloc(PAGE_SIZE);
-	newIndexBasedPage(firstPageData);
+	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
 
 	// Adds the first index based page.
 	FileHandle handle;
@@ -102,17 +104,18 @@ RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute,
 
 	}
 
-
+/*
+	unsigned k = 1;
 	//Geting to correct leafnode from root
 	while (!indexHeader.isLeaf){
+		while(k < indexHeader.numberOfRecords){
 			
+
+		}
 						
-
-
-
 	}		
 
-
+*/
 
 	return 0;
 }
@@ -139,7 +142,7 @@ void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, 
 
 
   IndexPageHeader indexHeader;
-  slotHeader.freeSpaceOffset = PAGE_SIZE;
+  indexHeader.freeSpaceOffset = PAGE_SIZE;
 	indexHeader.numberOfRecords = 0;
 
 	indexHeader.firstRecordOffset = sizeof(IndexPageHeader);
@@ -151,10 +154,10 @@ void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, 
 
 }
 
-void IndexManager::setIndexHeader(void * page, IndexHeader indexHeader)
+void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
 {
 	// Setting the slot directory header.
-	memcpy (page, &slotHeader, sizeof(indexHeader));
+	memcpy (page, &indexHeader, sizeof(indexHeader));
 }
 
 IndexPageHeader IndexManager::getIndexHeader(void * page)
@@ -205,7 +208,7 @@ void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsi
     }
     
     // Now, we create the new record
-    void* recordPtr = calloc(keylength + REC_RID_SIZE + REC_TYPE_SIZE +
+    void* recordPtr = calloc(keyLength + REC_RID_SIZE + REC_TYPE_SIZE +
         REC_CHLDPTR_SIZE + REC_NXTREC_SIZE + REC_ACTIVE_SIZE, 1);
     if(recordPtr == NULL){
         fprintf(stderr, "IndexManager.formatRecord: calloc failed, crashing now\n");
