@@ -12,6 +12,9 @@
  
  
 #include "ix.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 IndexManager* IndexManager::_index_manager = 0;
 
