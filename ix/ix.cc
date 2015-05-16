@@ -1,4 +1,16 @@
-
+/*
+ * ix.cc:	The implementation file for the index file manager module
+ * 
+ * By:  	David Taylor
+ *      	Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+ 
+ 
 #include "ix.h"
 
 IndexManager* IndexManager::_index_manager = 0;
