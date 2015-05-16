@@ -79,6 +79,7 @@ class IndexManager {
 
   void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 	void setIndexHeader(void * page, IndexPageHeader indexHeader);
+	IndexPageHeader getIndexHeader(void * page);
 
 
 
