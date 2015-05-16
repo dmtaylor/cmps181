@@ -20,6 +20,7 @@
 #include "../rbf/rbfm.h"
 
 # define IX_EOF (-1)  // end of the index scan
+#define IX_NULL_PAGE (-1) // To indicate a null page
 
 class IX_ScanIterator;
 
