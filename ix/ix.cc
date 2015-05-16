@@ -13,6 +13,8 @@ IndexManager* IndexManager::instance()
 
 IndexManager::IndexManager()
 {
+	// Initialize the internal PagedFileManager instance.
+	_pf_manager = PagedFileManager::instance();
 }
 
 IndexManager::~IndexManager()
@@ -21,9 +23,9 @@ IndexManager::~IndexManager()
 
 RC IndexManager::createFile(const string &fileName)
 {
-/*
+
   if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
-		fprintf(stderr, "rbfm.createFile(): PFM.createFile() FAILED");
+		fprintf(stderr, "IX.createFile(): PFM.createFile() FAILED");
 		return 1;
 	}
 
@@ -38,7 +40,7 @@ RC IndexManager::createFile(const string &fileName)
 	_pf_manager->closeFile(handle);
 
 	free(firstPageData);
-*/
+
 	return 0;
 
 }
@@ -82,10 +84,21 @@ RC IndexManager::scan(FileHandle &fileHandle,
 void IndexManager::newIndexBasedPage(void * page){
 
 /*
+	SlotDirectoryHeader slotHeader;
+	slotHeader.freeSpaceOffset = PAGE_SIZE;
+	slotHeader.recordEntriesNumber = 0;
+	setSlotDirectoryHeader(page, slotHeader);
+*/
   IndexPageHeader indexHeader;
   slotHeader.freeSpaceOffset = PAGE_SIZE;
-*/  
+	indexHeader.numberOfRecords = 0;
  
+}
+
+void IndexManager::setIndexHeader(void * page, IndexHeader indexHeader)
+{
+	// Setting the slot directory header.
+	memcpy (page, &slotHeader, sizeof(indexHeader));
 }
 
 IX_ScanIterator::IX_ScanIterator()

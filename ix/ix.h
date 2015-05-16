@@ -61,7 +61,10 @@ class IndexManager {
 
  private:
   static IndexManager *_index_manager;
+	static PagedFileManager *_pf_manager;
+
   void newIndexBasedPage(void * page);
+	void setIndexHeader(void * page, IndexHeader indexHeader);
 
 
 
