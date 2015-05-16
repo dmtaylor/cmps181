@@ -6,3 +6,15 @@
 rbf/rbftest
 makefile.inc
 
+*.table
+ix/ixtest1
+ix/ixtest2
+rbf/.gedit*
+rbf/rbftest11a
+rbf/rbftest11b
+rbf/test_11a
+rbf/test_11a_rids
+rm/*.err
+rm/*.log
+rm/rmtest*
+!rm/*.cc
