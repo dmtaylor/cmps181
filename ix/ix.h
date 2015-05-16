@@ -1,3 +1,15 @@
+/*
+ * pfm.h:   Header file for the index file manager
+ * 
+ * By:      David Taylor
+ *          Jake Zidow
+ * 
+ * Starter code provided by Paolo Di Febbo, Shel Finkelstein
+ * 
+ * CMPS181 Spring 2015
+ * 
+ * */
+
 
 #ifndef _ix_h_
 #define _ix_h_
