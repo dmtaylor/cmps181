@@ -136,10 +136,10 @@ class IndexManager {
     static IndexManager *_index_manager;
 	static PagedFileManager *_pf_manager;
 
-    void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
-	void setIndexHeader(void * page, IndexPageHeader indexHeader);
-	IndexPageHeader getIndexHeader(void * page);
-    void* formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum);
+//    void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
+//	void setIndexHeader(void * page, IndexPageHeader indexHeader);
+//	IndexPageHeader getIndexHeader(void * page);
+//    void* formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum);
     
     
     // Auxiliary methods.

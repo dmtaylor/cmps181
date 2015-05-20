@@ -121,7 +121,7 @@ RC IndexManager::createFile(const string &fileName)
     
     if(_pf_manager->openFile(fileName.c_str(), newFileH) != SUCCESS){
         fprintf(stderr, "IX.createFile(): PMF.openFile() FAILED\n");
-        return ERROR_PFM_CREATE;
+        return ERROR_PFM_OPEN;
     }
 
 	// Setting up the first page(leaf).
@@ -144,7 +144,7 @@ RC IndexManager::createFile(const string &fileName)
     
     NonLeafPageHeader rootHeader;
     rootHeader.recordsNumber = 0;
-    rootHeader.freeSpaceOffset = PAGE_SIZE;
+    rootHeader.freeSpaceOffset = PAGE_SIZE;/*or: sizeof(PageType) + sizeof(NonLeafHeader) */
     
     setNonLeafPageHeader(pageData, rootHeader);
     
@@ -155,7 +155,7 @@ RC IndexManager::createFile(const string &fileName)
     Attribute nullAttr;
     nullAttr.name = "NULL";
     nullAttr.type = TypeInt;
-    nullAttr.length = SIZE_INT;
+    nullAttr.length = INT_SIZE;
     
     if(insertNonLeafRecord(nullAttr, initLeafPage, pageData) != SUCCESS){
         fprintf(stderr, "IX.createFile(): Inserting init rec in root failed\n");
@@ -328,29 +328,37 @@ RC IndexManager::treeSearch(FileHandle &fileHandle, const Attribute attribute, c
 {
 
 	void * pageData = malloc(PAGE_SIZE);
-	fileHandle.readPage(currentPageID, pageData);
 
-	//should we be closing fileHandle?
-	if ( isLeafPage(pageData) ){
-		returnPageID = currentPageID;	
+	// Gets the current page.
+	if (fileHandle.readPage(currentPageID, pageData) != SUCCESS)
+		return ERROR_PFM_READPAGE;
+
+	// If it's a leaf page, we're done. Returns its id.
+	if (isLeafPage(pageData))
+	{
+		returnPageID = currentPageID;
 		free(pageData);
-		return 0;
+		return SUCCESS;
 	}
 
-	
-	
+	// Otherwise, we go one level below (towards the correct son page) and call the method again.
+	unsigned sonPageID = getSonPageID(attribute, key, pageData);
 
-	return 0;
+	free(pageData);
+
+	return treeSearch(fileHandle, attribute, key, sonPageID, returnPageID);
+
 }
 
+/*
 RC IndexManager::find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID){
 
-/*
+
 	//get root page number	
 	void * pageData = malloc(PAGE_SIZE);
 	fileHandle.readPage(0, pageData);
 	memcpy(&root, pageData, sizeof(uint32_t));
-*/
+
 
 	uint32_t root = getRootPageID(fileHandle);
 	treeSearch(fileHandle, attribute, key, root, returnPageID);
@@ -359,7 +367,7 @@ RC IndexManager::find(FileHandle &fileHandle, const Attribute attribute, const v
 
 
 }
-
+*/
 
 RC IndexManager::scan(FileHandle &fileHandle,
     const Attribute &attribute,
@@ -373,7 +381,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
 }
 
 // NOTE: This might be deprecated
-//isLeaf == 1 means "is leaf". 1=yes, 0=no
+//isLeaf == 1 means "is leaf". 1=yes, 0=no 
+/*
 void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next){
 
 
@@ -388,7 +397,7 @@ void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, 
 	indexHeader.nextPage = next;
 	setIndexHeader(page, indexHeader);
 
-}
+} 
 
 void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
 {
@@ -402,7 +411,7 @@ IndexPageHeader IndexManager::getIndexHeader(void * page)
 	memcpy (&indexHeader, page, sizeof(IndexPageHeader));
 	return indexHeader;
 }
-
+*/
 IX_ScanIterator::IX_ScanIterator()
 {
 }
@@ -460,7 +469,7 @@ void IX_PrintError (RC rc)
 		break;
 	}
 }
-
+/*
 //NOTE: this might be deprecated
 void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum){
     // First we find the length of the key
@@ -498,4 +507,4 @@ void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsi
     
     //return record
     return recordPtr;
-}
+} */
