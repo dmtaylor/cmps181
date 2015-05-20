@@ -112,14 +112,80 @@ unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key,
 //void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 RC IndexManager::createFile(const string &fileName)
 {
-
-  if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
-		fprintf(stderr, "IX.createFile(): PFM.createFile() FAILED");
-		return 1;
-	}
+    if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
+		fprintf(stderr, "IX.createFile(): PFM.createFile() FAILED\n");
+		return ERROR_PFM_CREATE;
+    }
+    
+    FileHandle newFileH;
+    
+    if(_pf_manager->openFile(fileName.c_str(), newFileH) != SUCCESS){
+        fprintf(stderr, "IX.createFile(): PMF.openFile() FAILED\n");
+        return ERROR_PFM_CREATE;
+    }
 
 	// Setting up the first page(leaf).
-	void * firstPageData = malloc(PAGE_SIZE);
+	void * pageData = calloc(PAGE_SIZE, 1);
+    
+    uint32_t rootPageNum = 1;
+    memcpy(pageData, &rootPageNum, INT_SIZE);
+    
+    // append the first page to the file
+    if(newFileH.appendPage(pageData) != SUCCESS){
+        fprintf(stderr, "IX.createFile(): fileHandle.appendPage() failed for page 0\n");
+        return ERROR_PFM_WRITEPAGE;
+    }
+    //reset mem ptr for reuse
+    memset(pageData, 0, INT_SIZE);
+    
+    //Now, do first root page
+    setPageType(pageData, NonLeafPage);
+    
+    NonLeafPageHeader rootHeader;
+    rootHeader.recordsNumber = 0;
+    rootHeader.freeSpaceOffset = PAGE_SIZE;
+    
+    setNonLeafPageHeader(pageData, rootHeader);
+    
+    //Create first record in root page
+    ChildEntry initLeafPage;
+    initLeafPage.key = NULL;
+    initLeafPage.childPageNumber = 2;
+    Attribute nullAttr;
+    nullAttr.name = "NULL";
+    nullAttr.type = TypeInt;
+    nullAttr.length = SIZE_INT;
+    
+    if(insertNonLeafRecord(nullAttr, initLeafPage, pageData) != SUCCESS){
+        fprintf(stderr, "IX.createFile(): Inserting init rec in root failed\n");
+        return ERROR_PFM_CREATE;
+    }
+    
+    if(newFileH.appendPage(pageData) != SUCCESS){
+        fprintf(stderr, "IX.createFile(): fileHandle.appendPage() failed for page 0\n");
+        return ERROR_PFM_WRITEPAGE;
+    }
+    
+    memset(pageData, 0, PAGE_SIZE);
+    
+    //Creating the new leaf page
+    
+    setPageType(pageData, LeafPage);
+    
+    LeafPageHeader lpHeader;
+    lpHeader.prevPage = NULL_PAGE_ID;
+    lpHeader.nextPage = NULL_PAGE_ID;
+    lpHeader.recordsNumber = 0;
+    lpHeader.freeSpaceOffset = PAGE_SIZE;
+    setLeafPageHeader(pageData, lpHeader);
+    
+    if(newFileH.appendPage(pageData) != SUCCESS){
+        fprintf(stderr, "IX.createFile(): fileHandle.appendPage() failed for page 0\n");
+        return ERROR_PFM_WRITEPAGE;
+    }
+    
+    
+    /*
 	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
 
 	// Adds the first index based page.
@@ -127,10 +193,13 @@ RC IndexManager::createFile(const string &fileName)
 	_pf_manager->openFile(fileName.c_str(), handle);
 	handle.appendPage(firstPageData);
 	_pf_manager->closeFile(handle);
+    */
+	free(pageData);
+    if(_pf_manager->closeFile(newFileH) != SUCCESS){
+        return ERROR_PFM_CLOSE;
+    }
 
-	free(firstPageData);
-
-	return 0;
+	return SUCCESS;
 
 }
 

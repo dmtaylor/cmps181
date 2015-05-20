@@ -82,7 +82,7 @@ enum PageType {LeafPage, NonLeafPage};
 
 
 class IX_ScanIterator;
-
+/*
 typedef struct
 {
   unsigned freeSpaceOffset;
@@ -91,7 +91,7 @@ typedef struct
   unsigned parentPage;
   unsigned nextPage;
   bool isLeaf;
-} IndexPageHeader;
+} IndexPageHeader;*/
 
 class IndexManager {
  public:
