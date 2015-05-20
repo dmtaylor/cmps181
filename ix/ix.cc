@@ -107,6 +107,8 @@ unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key, void * pageData)
 {
 	return -1;
+
+	
 }
 
 //void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
