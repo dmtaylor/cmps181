@@ -20,7 +20,27 @@
 #include "../rbf/rbfm.h"
 
 # define IX_EOF (-1)  // end of the index scan
-#define IX_NULL_PAGE (-1) // To indicate a null page
+// Used for prevPage in the first page and for nextPage in the last one.
+#define NULL_PAGE_ID					-1
+
+// Return error codes.
+#define ERROR_PFM_CREATE				1
+#define ERROR_PFM_DESTROY				2
+#define ERROR_PFM_OPEN					3
+#define ERROR_PFM_CLOSE					4
+#define ERROR_PFM_READPAGE				5
+#define ERROR_PFM_WRITEPAGE				6
+#define ERROR_PFM_FILEHANDLE			7
+
+#define ERROR_NO_SPACE_AFTER_SPLIT		8
+#define ERROR_RECORD_EXISTS				9
+#define ERROR_RECORD_NOT_EXISTS			10
+
+#define ERROR_UNKNOWN					-1
+
+// Internal error.
+#define ERROR_NO_FREE_SPACE				11
+
 #define REC_ACTIVE_OFF 0
 #define REC_NXTREC_OFF 1
 #define REC_CHLDPTR_OFF 5
@@ -33,6 +53,33 @@
 #define REC_CHLDPTR_SIZE 4
 #define REC_TYPE_SIZE 4
 #define REC_RID_SIZE 8
+
+// LeafPageHeader definition
+typedef struct
+{
+  int prevPage;
+  int nextPage;
+  unsigned recordsNumber;
+  unsigned freeSpaceOffset;
+} LeafPageHeader;
+
+// NonLeafPageHeader definition
+typedef struct
+{
+  unsigned recordsNumber;
+  unsigned freeSpaceOffset;
+} NonLeafPageHeader;
+
+// ChildEntry definition (for non-leaf pages)
+typedef struct
+{
+  void * key;
+  unsigned childPageNumber;
+} ChildEntry;
+
+// PageType definition
+enum PageType {LeafPage, NonLeafPage};
+
 
 class IX_ScanIterator;
 
@@ -88,11 +135,37 @@ class IndexManager {
     static IndexManager *_index_manager;
 	static PagedFileManager *_pf_manager;
 
-  void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
+    void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 	void setIndexHeader(void * page, IndexPageHeader indexHeader);
 	IndexPageHeader getIndexHeader(void * page);
     void* formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum);
+    
+    
+    // Auxiliary methods.
 
+  bool isLeafPage(void * pageData);
+  bool recordExistsInLeafPage(const Attribute &attribute, const void *key, const RID &rid, void * pageData);
+
+  PageType getPageType(void * pageData);
+  void setPageType(void * pageData, PageType pageType);
+  NonLeafPageHeader getNonLeafPageHeader(void * pageData);
+  void setNonLeafPageHeader(void * pageData, NonLeafPageHeader nonLeafHeader);
+  LeafPageHeader getLeafPageHeader(void * pageData);
+  void setLeafPageHeader(void * pageData, LeafPageHeader leafHeader);
+
+  RC deleteEntryFromLeaf(const Attribute &attribute, const void *key, const RID &rid, void * pageData);
+
+  RC insertNonLeafRecord(const Attribute &attribute, ChildEntry &newChildEntry, void * pageData);
+  RC insertLeafRecord(const Attribute &attribute, const void *key, const RID &rid, void * pageData);
+  RC insert(const Attribute &attribute, const void *key, const RID &rid, FileHandle &fileHandle, unsigned pageID, ChildEntry &newChildEntry);
+
+  unsigned getRootPageID(FileHandle fileHandle);
+
+  int compareKeys(const Attribute attribute, const void * key1, const void * key2);
+  unsigned getKeyLength(const Attribute &attribute, const void * key);
+
+  unsigned getSonPageID(const Attribute attribute, const void * key, void * pageData);
+  RC treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID);
 
 
 
