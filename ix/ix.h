@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "../rbf/rbfm.h"
 
@@ -167,6 +168,8 @@ class IndexManager {
   unsigned getSonPageID(const Attribute attribute, const void * key, void * pageData);
   RC treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID);
 
+	RC find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID);
+
 
 
 };
@@ -178,6 +181,10 @@ class IX_ScanIterator {
 
   RC getNextEntry(RID &rid, void *key);  		// Get next matching entry
   RC close();             						// Terminate index scan
+
+	vector<void *> keys; 
+	vector<RID> rids;
+	vector<unsigned> sizes;
 };
 
 // print out the error message for a given return code

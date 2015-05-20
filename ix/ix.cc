@@ -120,7 +120,7 @@ RC IndexManager::createFile(const string &fileName)
 
 	// Setting up the first page(leaf).
 	void * firstPageData = malloc(PAGE_SIZE);
-	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
+	newIndexBasedPage(firstPageData, 1, NULL_PAGE_ID, NULL_PAGE_ID);
 
 	// Adds the first index based page.
 	FileHandle handle;
@@ -255,8 +255,40 @@ RC IndexManager::deleteEntry(FileHandle &fileHandle, const Attribute &attribute,
 // Recursive search through the tree, returning the page ID of the leaf page that should contain the input key.
 RC IndexManager::treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID)
 {
-	return -1;
+
+	void * pageData = malloc(PAGE_SIZE);
+	fileHandle.readPage(currentPageID, pageData);
+
+	//should we be closing fileHandle?
+	if ( isLeafPage(pageData) ){
+		returnPageID = currentPageID;	
+		free(pageData);
+		return 0;
+	}
+
+	
+	
+
+	return 0;
 }
+
+RC IndexManager::find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID){
+
+/*
+	//get root page number	
+	void * pageData = malloc(PAGE_SIZE);
+	fileHandle.readPage(0, pageData);
+	memcpy(&root, pageData, sizeof(uint32_t));
+*/
+
+	uint32_t root = getRootPageID(fileHandle);
+	treeSearch(fileHandle, attribute, key, root, returnPageID);
+
+	return 0;
+
+
+}
+
 
 RC IndexManager::scan(FileHandle &fileHandle,
     const Attribute &attribute,
