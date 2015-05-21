@@ -103,6 +103,72 @@ unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 	return rootPageID;
 }
 
+int IndexManager::compareKeys(const Attribute attribute, const void * key1, const void * key2){
+    int result = -1;
+    
+    uint32_t key1IntVal;
+    uint32_t key2IntVal;
+    
+    float key1RealVal;
+    float key2RealVal;
+    
+    uint32_t key1Len;
+    uint32_t key2Len;
+    char* key1Str;
+    char* key2Str;
+    
+    if(attribute.type == TypeInt){
+        memcpy(&key1IntVal, key1, INT_SIZE);
+        memcpy(&key2IntVal, key2, INT_SIZE);
+        if(key1IntVal < key2IntVal){
+            return -1;
+        }
+        else if(key1IntVal == key2IntVal){
+            return 0;
+        }
+        else{
+            return 1;
+        }
+        
+    }
+    else if(attribute.type == TypeReal){
+        memcpy(&key1RealVal, key1, INT_SIZE);
+        memcpy(&key2RealVal, key2, INT_SIZE);
+        if(key1RealVal < key2RealVal){
+            return -1;
+        }
+        else if(key1RealVal == key2RealVal){
+            return 0;
+        }
+        else{
+            return 1;
+        }
+    }
+    else if(attribute.type == TypeVarChar){
+        memcpy(&key1Len, key1, VARCHAR_LENGTH_SIZE);
+        memcpy(&key2Len, key2, VARCHAR_LENGTH_SIZE);
+        
+        key1Str = (char *)calloc(key1Len + 1, 1);
+        key2Str = (char *)calloc(key2Len + 1, 1);
+        
+        memcpy(key1Str, (char*) key1 + VARCHAR_LENGTH_SIZE, key1Len);
+        memcpy(key2Str, (char*) key2 + VARCHAR_LENGTH_SIZE, key2Len);
+        
+        result = strcmp(key1Str, key2Str);
+        free(key1Str);
+        free(key2Str);
+        return result;
+    }
+    else{
+        fprintf(stderr, "IndexManager.compareKeys: invalid type comparison\n");
+    }
+    
+    
+    
+    return result;
+}
+
+
 // int compareKeys(attribute, void * 1, void * 2); negative if 1 < 2    positive if 2 > 1
 // Given a non-leaf page and a key, finds the correct (direct) son page ID in which the key "fits".
 unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key, void * pageData)
@@ -138,11 +204,11 @@ unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key,
 			memcpy(&size, (char *)pageData + offset, VARCHAR_LENGTH_SIZE);
 			memcpy(&indexKey, (char *)pageData + offset + VARCHAR_LENGTH_SIZE, size);
 			size += VARCHAR_LENGTH_SIZE; //so 'size' refers to entire sizeof current indexKey
-		} else
+		} else{
 			memcpy(&indexKey, (char *)pageData + offset, size);
-		
+		}
 
-		if (/*compareKeys(attribute, key, indexKey) < 0*/ ){
+		if (compareKeys(attribute, key, indexKey) < 0 ){
 			break;
 		}else{
 			//offset += size;
@@ -533,68 +599,4 @@ void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsi
     return recordPtr;
 } */
 
-int IndexManager::compareKeys(Attribute &attribute, void* key1, void* key2){
-    int result = -1;
-    
-    uint32_t key1IntVal;
-    uint32_t key2IntVal;
-    
-    float key1RealVal;
-    float key2RealVal;
-    
-    uint32_t key1Len;
-    uint32_t key2Len;
-    char* key1Str;
-    char* key2Str;
-    
-    if(attribute.type == TypeInt){
-        memcpy(&key1IntVal, key1, INT_SIZE);
-        memcpy(&key2IntVal, key2, INT_SIZE);
-        if(key1IntVal < key2IntVal){
-            return -1;
-        }
-        else if(key1IntVal = key2IntVal){
-            return 0;
-        }
-        else{
-            return 1;
-        }
-        
-    }
-    else if(attribute.type == TypeReal){
-        memcpy(&key1RealVal, key1, INT_SIZE);
-        memcpy(&key2RealVal, key2, INT_SIZE);
-        if(key1RealVal < key2RealVal){
-            return -1;
-        }
-        else if(key1RealVal = key2RealVal){
-            return 0;
-        }
-        else{
-            return 1;
-        }
-    }
-    else if(attribute.type == TypeVarChar){
-        memcpy(&key1Len, key1, VARCHAR_LENGTH_SIZE);
-        memcpy(&key2Len, key2, VARCHAR_LENGTH_SIZE);
-        
-        key1Str = calloc(key1Len + 1, 1);
-        key2Str = calloc(key2Len + 1, 1);
-        
-        memcpy(key1Str, (char*) key1 + VARCHAR_LENGTH_SIZE, key1Len);
-        memcpy(key2Str, (char*) key2 + VARCHAR_LENGTH_SIZE, key2Len);
-        
-        result = strcmp(key1Str, key2Str);
-        free(key1Str);
-        free(key2Str);
-        return result;
-    }
-    else{
-        fprintf(stderr, "IndexManager.compareKeys: invalid type comparison\n");
-    }
-    
-    
-    
-    return result;
-}
 

@@ -170,7 +170,7 @@ class IndexManager {
   
   RC find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID);
     
-  int compareKeys(Attribute &attribute, void* key1, void* key2);
+  //int compareKeys(Attribute &attribute, void* key1, void* key2);
     
 
 
