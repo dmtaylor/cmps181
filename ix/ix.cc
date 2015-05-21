@@ -144,25 +144,14 @@ RC IndexManager::createFile(const string &fileName)
     //Now, do first root page
     setPageType(pageData, NonLeafPage);
     
+    uint32_t childPage = 2;
     NonLeafPageHeader rootHeader;
     rootHeader.recordsNumber = 0;
-    rootHeader.freeSpaceOffset = PAGE_SIZE;/*or: sizeof(PageType) + sizeof(NonLeafHeader) */
+    rootHeader.freeSpaceOffset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(uint32_t);
     
     setNonLeafPageHeader(pageData, rootHeader);
+    memcpy((char*) pageData + sizeof(PageType) + sizeof(NonLeafPageHeader), &childPage, sizeof(uint32_t));
     
-    //Create first record in root page
-    ChildEntry initLeafPage;
-    initLeafPage.key = NULL;
-    initLeafPage.childPageNumber = 2;
-    Attribute nullAttr;
-    nullAttr.name = "NULL";
-    nullAttr.type = TypeInt;
-    nullAttr.length = INT_SIZE;
-    
-    if(insertNonLeafRecord(nullAttr, initLeafPage, pageData) != SUCCESS){
-        fprintf(stderr, "IX.createFile(): Inserting init rec in root failed\n");
-        return ERROR_PFM_CREATE;
-    }
     
     if(newFileH.appendPage(pageData) != SUCCESS){
         fprintf(stderr, "IX.createFile(): fileHandle.appendPage() failed for page 0\n");
@@ -179,7 +168,7 @@ RC IndexManager::createFile(const string &fileName)
     lpHeader.prevPage = NULL_PAGE_ID;
     lpHeader.nextPage = NULL_PAGE_ID;
     lpHeader.recordsNumber = 0;
-    lpHeader.freeSpaceOffset = PAGE_SIZE;
+    lpHeader.freeSpaceOffset = sizeof(PageType) + sizeof(LeafPageHeader);
     setLeafPageHeader(pageData, lpHeader);
     
     if(newFileH.appendPage(pageData) != SUCCESS){
@@ -187,17 +176,6 @@ RC IndexManager::createFile(const string &fileName)
         return ERROR_PFM_WRITEPAGE;
     }
     
-    
-    /*
-	newIndexBasedPage(firstPageData, 1, IX_NULL_PAGE, IX_NULL_PAGE);
-
-
-	// Adds the first index based page.
-	FileHandle handle;
-	_pf_manager->openFile(fileName.c_str(), handle);
-	handle.appendPage(firstPageData);
-	_pf_manager->closeFile(handle);
-    */
 	free(pageData);
     if(_pf_manager->closeFile(newFileH) != SUCCESS){
         return ERROR_PFM_CLOSE;
