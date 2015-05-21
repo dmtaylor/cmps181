@@ -488,3 +488,69 @@ void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsi
     //return record
     return recordPtr;
 } */
+
+int IndexManager::compareKeys(Attribute &attribute, void* key1, void* key2){
+    int result = -1;
+    
+    uint32_t key1IntVal;
+    uint32_t key2IntVal;
+    
+    float key1RealVal;
+    float key2RealVal;
+    
+    uint32_t key1Len;
+    uint32_t key2Len;
+    char* key1Str;
+    char* key2Str;
+    
+    if(attribute.type == TypeInt){
+        memcpy(&key1IntVal, key1, INT_SIZE);
+        memcpy(&key2IntVal, key2, INT_SIZE);
+        if(key1IntVal < key2IntVal){
+            return -1;
+        }
+        else if(key1IntVal = key2IntVal){
+            return 0;
+        }
+        else{
+            return 1;
+        }
+        
+    }
+    else if(attribute.type == TypeReal){
+        memcpy(&key1RealVal, key1, INT_SIZE);
+        memcpy(&key2RealVal, key2, INT_SIZE);
+        if(key1RealVal < key2RealVal){
+            return -1;
+        }
+        else if(key1RealVal = key2RealVal){
+            return 0;
+        }
+        else{
+            return 1;
+        }
+    }
+    else if(attribute.type == TypeVarChar){
+        memcpy(&key1Len, key1, VARCHAR_LENGTH_SIZE);
+        memcpy(&key2Len, key2, VARCHAR_LENGTH_SIZE);
+        
+        key1Str = calloc(key1Len + 1, 1);
+        key2Str = calloc(key2Len + 1, 1);
+        
+        memcpy(key1Str, (char*) key1 + VARCHAR_LENGTH_SIZE, key1Len);
+        memcpy(key2Str, (char*) key2 + VARCHAR_LENGTH_SIZE, key2Len);
+        
+        result = strcmp(key1Str, key2Str);
+        free(key1Str);
+        free(key2Str);
+        return result;
+    }
+    else{
+        fprintf(stderr, "IndexManager.compareKeys: invalid type comparison\n");
+    }
+    
+    
+    
+    return result;
+}
+
