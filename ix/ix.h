@@ -167,8 +167,11 @@ class IndexManager {
 
   unsigned getSonPageID(const Attribute attribute, const void * key, void * pageData);
   RC treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID);
-
-	RC find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID);
+  
+  RC find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID);
+    
+  int compareKeys(Attribute &attribute, void* key1, void* key2);
+    
 
 
 
