@@ -106,7 +106,20 @@ unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 // Given a non-leaf page and a key, finds the correct (direct) son page ID in which the key "fits".
 unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key, void * pageData)
 {
-	return -1;
+
+	NonLeafPageHeader nonLeafHeader = getNonLeafPageHeader(pageData);
+	uint32_t sonID;
+
+
+	uint32_t offset = sizeof(PageType) + sizeof(NonLeafPageHeader);
+	memcpy( &sonID, pageData + offset, sizeof(uint32_t) );
+
+	for (int i = 0; i < nonLeafHeader.recordsNumber; ++i){
+		
+
+	}
+
+	return sonID;
 
 	
 }
