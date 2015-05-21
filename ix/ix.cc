@@ -103,24 +103,55 @@ unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 	return rootPageID;
 }
 
+// int compareKeys(attribute, void * 1, void * 2); negative if 1 < 2    positive if 2 > 1
 // Given a non-leaf page and a key, finds the correct (direct) son page ID in which the key "fits".
 unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key, void * pageData)
 {
 
-	NonLeafPageHeader nonLeafHeader = getNonLeafPageHeader(pageData);
+
 	uint32_t sonID;
+	uint32_t size;
+
+	void * indexKey;
+	char varCharFlag = 0;
+
+	AttrType type = attribute.type;
+	if (type == TypeInt || TypeReal)
+		size = INT_SIZE;
+	else 
+		varCharFlag = 1;
 
 
 	uint32_t offset = sizeof(PageType) + sizeof(NonLeafPageHeader);
-	memcpy( &sonID, pageData + offset, sizeof(uint32_t) );
 
-	for (int i = 0; i < nonLeafHeader.recordsNumber; ++i){
+	NonLeafPageHeader nonLeafHeader = getNonLeafPageHeader(pageData);
+
+	//copy first pagePtr into sonID
+	memcpy( &sonID, (char *)pageData + offset, sizeof(uint32_t) );
+
+	//bring offset to beginning of first IndexKey 
+	offset += sizeof(uint32_t);
+
+	for (uint32_t i = 0; i < nonLeafHeader.recordsNumber; ++i){
+		
+		if (varCharFlag){
+			memcpy(&size, (char *)pageData + offset, VARCHAR_LENGTH_SIZE);
+			memcpy(&indexKey, (char *)pageData + offset + VARCHAR_LENGTH_SIZE, size);
+			size += VARCHAR_LENGTH_SIZE; //so 'size' refers to entire sizeof current indexKey
+		} else
+			memcpy(&indexKey, (char *)pageData + offset, size);
 		
 
+		if (/*compareKeys(attribute, key, indexKey) < 0*/ ){
+			break;
+		}else{
+			//offset += size;
+			memcpy(&sonID, (char *)pageData + offset + size, sizeof(uint32_t) );
+			offset += size + sizeof(uint32_t);
+		}
 	}
 
 	return sonID;
-
 	
 }
 
