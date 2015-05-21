@@ -168,6 +168,28 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
     return result;
 }
 
+unsigned IndexManager::getKeySize(Attribute attribute, void* key){
+    unsigned size;
+    
+    switch(attribute.type){
+        case TypeInt:
+            size = INT_SIZE;
+            break;
+        case TypeReal:
+            size = REAL_SIZE;
+            break;
+        case TypeVarChar:
+            memcpy(&size, key, VARCHAR_LENGTH_SIZE);
+            size += VARCHAR_LENGTH_SIZE;
+            break;
+        default:
+            fprintf(stderr, "IndexManager.getKeySize: invalid attribute type");
+            size = 0;
+    }
+    
+    return size;
+}
+
 
 // int compareKeys(attribute, void * 1, void * 2); negative if 1 < 2    positive if 2 > 1
 // Given a non-leaf page and a key, finds the correct (direct) son page ID in which the key "fits".
@@ -324,7 +346,47 @@ RC IndexManager::closeFile(FileHandle &fileHandle)
 // Given a ChildEntry structure (<key, child page id>), writes it into the correct position within the non leaf page "pageData".
 RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &newChildEntry, void * pageData)
 {
-	return -1;
+	
+    unsigned keySize = getkeySize(attribute, newChildEntry.key);
+    
+    
+    uint32_t offset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
+    unsigned iter_key_size;
+    int compResult;
+    void * iter_key;
+    
+    NonLeafPageHeader nonLeafHeader = getNonLeafPageHeader(pageData);
+    
+    
+    for(unsigned i = 0; i < nonLeafHeader.recordsNumber; ++i){
+        iter_key_size = getKeySize(attribute, (void *)((char*) pageData + offset));
+        iter_key = calloc(iter_key_size, 1);
+        memcpy(iter_key, (char*) pageData + offset, iter_key_size);
+        
+        if(compareKeys(attribute, newChildEntry.key, iter_key) < 0 ){
+            free(iter_key);
+            break;
+        }
+        
+        offset += iter_key_size + sizeof(unsigned);
+        
+        free(iter_key);
+    }
+    //offset is 1st key to be moved. Put new key at offset and displcace
+    
+    //logic to displace record
+    unsigned newDest = offset + keySize;
+    unsigned toMove = nonLeafHeader.freeSpaceOffset - offset;
+    memmove((void*)( (char*) pageData + newDest), (void*)( (char*) pageData + offset), toMove);
+    
+    //insert new record
+    memcpy((void*)( (char*) pageData + offset), newChileEntry.key, keySize);
+    
+    //TODO : update free space pointer, records
+    
+    //TODO : set page header
+    
+    return 0;
 }
 
 // Given a record entry (<key, RID>), writes it into the correct position within the leaf page "pageData".
@@ -338,7 +400,28 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
 // Following the exact implementation described in Ramakrishnan - Gehrke, p.349.
 RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &rid, FileHandle &fileHandle, unsigned pageID, ChildEntry &newChildEntry)
 {
-	return -1;
+	void* pageData = calloc(PAGE_SIZE, 1);
+    
+    if(fileHandle.readPage(pageID, pageData) != SUCCESS){
+        return ERROR_PFM_READPAGE;
+    }
+    
+    PageType isLeaf = getPageType(pageData);
+    
+    
+    // Do insert on leaf record
+    if(isLeaf){
+        //TODO
+        
+    }//Do non-leaf insert
+    else{
+        //TODO
+        
+    }
+    
+    
+    
+    return 0;
 }
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
@@ -470,38 +553,6 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	return -1;
 }
 
-// NOTE: This might be deprecated
-//isLeaf == 1 means "is leaf". 1=yes, 0=no 
-/*
-void IndexManager::newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next){
-
-
-  IndexPageHeader indexHeader;
-  indexHeader.freeSpaceOffset = PAGE_SIZE;
-	indexHeader.numberOfRecords = 0;
-
-	indexHeader.firstRecordOffset = sizeof(IndexPageHeader);
-
-	indexHeader.isLeaf = isLeaf;
-	indexHeader.parentPage = parent;
-	indexHeader.nextPage = next;
-	setIndexHeader(page, indexHeader);
-
-} 
-
-void IndexManager::setIndexHeader(void * page, IndexPageHeader indexHeader)
-{
-	// Setting the slot directory header.
-	memcpy (page, &indexHeader, sizeof(indexHeader));
-}
-
-IndexPageHeader IndexManager::getIndexHeader(void * page)
-{
-	IndexPageHeader indexHeader;
-	memcpy (&indexHeader, page, sizeof(IndexPageHeader));
-	return indexHeader;
-}
-*/
 IX_ScanIterator::IX_ScanIterator()
 {
 }
@@ -559,44 +610,5 @@ void IX_PrintError (RC rc)
 		break;
 	}
 }
-/*
-//NOTE: this might be deprecated
-void* IndexManager::formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum){
-    // First we find the length of the key
-    uint32_t keyLength;
-    if(attribute.type == TypeInt){
-        keyLength = INT_SIZE;
-    }
-    else if(attribute.type == TypeReal){
-        keyLength = REAL_SIZE;
-    }
-    else if(attribute.type == TypeVarChar){
-        memcpy(&keyLength, key, VARCHAR_LENGTH_SIZE);
-        keyLength += VARCHAR_LENGTH_SIZE;
-    }
-    else{
-        fprintf(stderr, "IndexManager.formatRecord: Invalid attribute type for new record\n");
-        return NULL;
-    }
-    
-    // Now, we create the new record
-    void* recordPtr = calloc(keyLength + REC_RID_SIZE + REC_TYPE_SIZE +
-        REC_CHLDPTR_SIZE + REC_NXTREC_SIZE + REC_ACTIVE_SIZE, 1);
-    if(recordPtr == NULL){
-        fprintf(stderr, "IndexManager.formatRecord: calloc failed, crashing now\n");
-        exit(1);
-    }
-    
-    // set the fields of the record
-    memset((char*) recordPtr + REC_ACTIVE_OFF, 1, REC_ACTIVE_SIZE);
-    memcpy((char*) recordPtr + REC_NXTREC_OFF, &next_offset, REC_NXTREC_SIZE);
-    memcpy((char*) recordPtr + REC_CHLDPTR_OFF, &childPageNum, REC_CHLDPTR_SIZE);
-    memcpy((char*) recordPtr + REC_TYPE_OFF, &attribute.type, REC_TYPE_SIZE);
-    memcpy((char*) recordPtr + REC_RID_OFF, &val, REC_RID_SIZE);
-    memcpy((char*) recordPtr + REC_KEY_OFF, key, keyLength);
-    
-    //return record
-    return recordPtr;
-} */
 
 

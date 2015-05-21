@@ -163,7 +163,6 @@ class IndexManager {
   unsigned getRootPageID(FileHandle fileHandle);
 
   int compareKeys(const Attribute attribute, const void * key1, const void * key2);
-  unsigned getKeyLength(const Attribute &attribute, const void * key);
 
   unsigned getSonPageID(const Attribute attribute, const void * key, void * pageData);
   RC treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID);
@@ -172,7 +171,7 @@ class IndexManager {
     
   //int compareKeys(Attribute &attribute, void* key1, void* key2);
     
-
+  unsigned getKeySize(Attribute attribute, void* key);
 
 
 };
