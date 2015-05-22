@@ -375,19 +375,20 @@ RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &new
         free(iter_key);
     }
     //offset is 1st key to be moved. Put new key at offset and displcace
-    
-	//TODO: also need to copy newChildEntry.childPageNumber 	
+    	
 
     //logic to displace record
-    unsigned newDest = offset + keySize;
+    unsigned newDest = offset + keySize + sizeof(unsigned);
     unsigned toMove = nonLeafHeader.freeSpaceOffset - offset;
     memmove((void*)( (char*) pageData + newDest), (void*)( (char*) pageData + offset), toMove);
     
     //insert new record
     memcpy((void*)( (char*) pageData + offset), newChildEntry.key, keySize);
     
+    memcpy((char*) pageData + offset + keySize, &newChildEntry.childPageNumber, sizeof(unsigned));
+    
     //update free space pointer, records, set page header
-	nonLeafHeader.freeSpaceOffset += keySize;
+	nonLeafHeader.freeSpaceOffset += keySize + sizeof(unsigned);
     ++nonLeafHeader.recordsNumber;
 	setNonLeafPageHeader(pageData, nonLeafHeader);
     
@@ -399,7 +400,47 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
 {
     
 	//SCAN() RELIES ON 'KEY' COMING BEFORE 'RID' IN EACH RECORD ON LEAF PAGE
-	return -1;
+    unsigned keySize = getKeySize(attribute, key);
+    
+    uint32_t offset = sizeof(PageType) + sizeof(LeafPageHeader);
+    unsigned iter_key_size;
+    //int compResult;
+    void * iter_key;
+    
+    LeafPageHeader leafHeader = getLeafPageHeader(pageData);
+    
+    
+    for(unsigned i = 0; i < nonLeafHeader.recordsNumber; ++i){
+        iter_key_size = getKeySize(attribute, (void *)((char*) pageData + offset));
+        iter_key = calloc(iter_key_size, 1);
+        memcpy(iter_key, (char*) pageData + offset, iter_key_size);
+        
+        if(compareKeys(attribute, key, iter_key) < 0 ){
+            free(iter_key);
+            break;
+        }
+        
+        offset += iter_key_size + sizeof(RID);
+        
+        free(iter_key);
+    }
+    
+    //logic to displace record
+    unsigned newDest = offset + keySize + sizeof(RID);
+    unsigned toMove = leafHeader.freeSpaceOffset - offset;
+    memmove((void*)( (char*) pageData + newDest), (void*)( (char*) pageData + offset), toMove);
+    
+    //insert new record
+    memcpy((void*)( (char*) pageData + offset), newChildEntry.key, keySize);
+    
+    memcpy((char*) pageData + offset + keySize, &rid, sizeof(RID));
+    
+    //update free space pointer, records, set page header
+	nonLeafHeader.freeSpaceOffset += keySize + sizeof(RID);
+    ++nonLeafHeader.recordsNumber;
+	setNonLeafPageHeader(pageData, nonLeafHeader);
+    
+    return 0;
 }
 
 // Recursive insert of the record <key, rid> into the (current) page "pageID".
@@ -678,5 +719,3 @@ void IX_PrintError (RC rc)
 		break;
 	}
 }
-
-
