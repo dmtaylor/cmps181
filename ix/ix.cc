@@ -150,6 +150,8 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
         
         key1Str = (char *)calloc(key1Len + 1, 1);
         key2Str = (char *)calloc(key2Len + 1, 1);
+
+	//Do we have to add null plugs?
         
         memcpy(key1Str, (char*) key1 + VARCHAR_LENGTH_SIZE, key1Len);
         memcpy(key2Str, (char*) key2 + VARCHAR_LENGTH_SIZE, key2Len);
@@ -347,12 +349,12 @@ RC IndexManager::closeFile(FileHandle &fileHandle)
 RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &newChildEntry, void * pageData)
 {
 	
-    unsigned keySize = getkeySize(attribute, newChildEntry.key);
+    unsigned keySize = getKeySize(attribute, newChildEntry.key);
     
     
     uint32_t offset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
     unsigned iter_key_size;
-    int compResult;
+    //int compResult;
     void * iter_key;
     
     NonLeafPageHeader nonLeafHeader = getNonLeafPageHeader(pageData);
@@ -374,17 +376,20 @@ RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &new
     }
     //offset is 1st key to be moved. Put new key at offset and displcace
     
+	//TODO: also need to copy newChildEntry.childPageNumber 	
+
     //logic to displace record
     unsigned newDest = offset + keySize;
     unsigned toMove = nonLeafHeader.freeSpaceOffset - offset;
     memmove((void*)( (char*) pageData + newDest), (void*)( (char*) pageData + offset), toMove);
     
     //insert new record
-    memcpy((void*)( (char*) pageData + offset), newChileEntry.key, keySize);
+    memcpy((void*)( (char*) pageData + offset), newChildEntry.key, keySize);
     
-    //TODO : update free space pointer, records
-    
-    //TODO : set page header
+    //update free space pointer, records, set page header
+	nonLeafHeader.freeSpaceOffset += keySize;
+    ++nonLeafHeader.recordsNumber;
+	setNonLeafPageHeader(pageData, nonLeafHeader);
     
     return 0;
 }
@@ -392,6 +397,8 @@ RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &new
 // Given a record entry (<key, RID>), writes it into the correct position within the leaf page "pageData".
 RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, const RID &rid, void * pageData)
 {
+    
+	//SCAN() RELIES ON 'KEY' COMING BEFORE 'RID' IN EACH RECORD ON LEAF PAGE
 	return -1;
 }
 
@@ -542,6 +549,7 @@ RC IndexManager::find(FileHandle &fileHandle, const Attribute attribute, const v
 }
 */
 
+//treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID)
 RC IndexManager::scan(FileHandle &fileHandle,
     const Attribute &attribute,
     const void      *lowKey,
@@ -550,7 +558,67 @@ RC IndexManager::scan(FileHandle &fileHandle,
     bool        	highKeyInclusive,
     IX_ScanIterator &ix_ScanIterator)
 {
-	return -1;
+	bool finished = false;
+	uint32_t root = getRootPageID(fileHandle);
+	uint32_t lowKeyPage;
+
+	treeSearch(fileHandle, attribute, lowKey, root, lowKeyPage);
+	
+	//Read page that contains lowKey
+	void * pageData = malloc(PAGE_SIZE);
+	fileHandle.readPage(lowKeyPage, pageData);
+	LeafPageHeader leafPageHeader = getLeafPageHeader(pageData);
+
+	//find first valid record inside lowKeyPage
+	uint32_t offset = sizeof(PageType) + sizeof(LeafPageHeader);
+	uint32_t recordSize;
+
+	uint32_t currRecordNumber = 0;
+
+	while (currRecordNumber < leafPageHeader.recordsNumber){
+
+		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
+			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
+			break;
+		}		
+
+		recordSize = sizeof(RID) + getKeySize( attribute, (void *)((char*)pageData + offset) );
+		offset +=recordSize;
+		++currRecordNumber;
+	}	
+
+	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator
+	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 && lowKeyInclusive){
+		
+	}
+
+	for(;;){
+
+		while(currRecordNumber<leafPageHeader.recordsNumber){
+
+			//if key no longer valid (greater than highKey) or equal to highkey
+			if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
+			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
+				finished = true;
+				break;
+			}
+			recordSize = sizeof(RID) + getKeySize( attribute, (void *)((char*)pageData + offset) );
+			offset +=recordSize;
+			++currRecordNumber;
+		}
+
+		if (finished) break;
+		fileHandle.readPage(leafPageHeader.nextPage, pageData);
+		offset = sizeof(PageType) + sizeof(LeafPageHeader);
+		currRecordNumber = 0;
+	}
+
+	//if lastvalid key == highKey and highKeyInclusive == true, push record into scan iterator
+	if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && highKeyInclusive){
+		
+	}
+
+	return 0;
 }
 
 IX_ScanIterator::IX_ScanIterator()

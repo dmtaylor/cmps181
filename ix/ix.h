@@ -122,7 +122,7 @@ class IndexManager {
   // If highKey is null, then the range is lowKey to +infinity
   RC scan(FileHandle &fileHandle,
       const Attribute &attribute,
-	  const void        *lowKey,
+	const void        *lowKey,
       const void        *highKey,
       bool        lowKeyInclusive,
       bool        highKeyInclusive,
@@ -186,7 +186,7 @@ class IX_ScanIterator {
 
 	vector<void *> keys; 
 	vector<RID> rids;
-	vector<unsigned> sizes;
+	//vector<unsigned> sizes;
 };
 
 // print out the error message for a given return code
