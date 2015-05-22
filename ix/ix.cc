@@ -607,6 +607,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
     IX_ScanIterator &ix_ScanIterator)
 {
 	bool finished = false;
+	bool foundFirstRecord = false;
+	bool scannedAllRecords = false;
 	uint32_t root = getRootPageID(fileHandle);
 	uint32_t lowKeyPage;
 	
@@ -623,11 +625,12 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	uint32_t offset = sizeof(PageType) + sizeof(LeafPageHeader);
 	uint32_t currRecordNumber = 0;
 
-	//find first valid record inside lowKeyPage
+	//Set offset to first valid record inside lowKeyPage
 	while (currRecordNumber < leafPageHeader.recordsNumber){
 
 		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
 			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
+			foundFirstRecord = true;
 			break;
 		}		
 
@@ -636,7 +639,11 @@ RC IndexManager::scan(FileHandle &fileHandle,
 		++currRecordNumber;
 	}	
 
-	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator
+	//debugging purposes, We shouldn't enter this if-statement
+	if (!foundFirstRecord)
+		fprintf(stderr, "ix.scan(): No valid record on lowKeyPage.");
+
+	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator, update offset
 	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 && lowKeyInclusive){
 		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 
@@ -645,8 +652,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
 		++currRecordNumber;
 	}
 
-	//scan through each leaf page starting from lowKeyPage, loading records
-	//until no longer valid.
+	//scan through each leaf page starting from lowKeyPage at first valid record,
+    // loading each record until records no longer valid.
 	for(;;){
 
 		while(currRecordNumber<leafPageHeader.recordsNumber){
@@ -665,6 +672,13 @@ RC IndexManager::scan(FileHandle &fileHandle,
 
 		if (finished) break;
 
+		//Check if at end of the linked list of leafPages
+		if (leafPageHeader.nextPage == NULL_PAGE_ID){
+			scannedAllRecords = true;
+			break;
+		}
+
+		//Reading the next page in linkedList of leaves into "pageData", possible source of seg fault?
 		if (fileHandle.readPage(leafPageHeader.nextPage, pageData) != SUCCESS){
 			fprintf(stderr, "IX.Scan(): pfm.readPage() failed\n");
 			return  ERROR_PFM_READPAGE;
@@ -696,9 +710,10 @@ RC IndexManager::pushBackRecord(void * recordOnPage, Attribute attribute, IX_Sca
 	memcpy(key, recordOnPage, RIDoffset);
 	scanIterator.keys.push_back(key);
 
+	//TODO: Possible point that is segfaulting.
 	//get RID
 	RID rid;
-	memcpy(&rid, ((char *) recordOnPage + RIDoffset), sizeof(RID));
+	memcpy(&rid, (char *) recordOnPage + RIDoffset, sizeof(RID));
 	scanIterator.rids.push_back(rid);
 
 	//get size
