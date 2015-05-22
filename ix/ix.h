@@ -171,7 +171,9 @@ class IndexManager {
     
   //int compareKeys(Attribute &attribute, void* key1, void* key2);
     
-  unsigned getKeySize(Attribute attribute, void* key);
+	//JAKE: added const to void* arg
+  unsigned getKeySize(Attribute attribute, const void* key);
+	RC pushBackRecord(void * record, Attribute attribute, IX_ScanIterator& scanIterator);
 
 
 };
@@ -186,7 +188,7 @@ class IX_ScanIterator {
 
 	vector<void *> keys; 
 	vector<RID> rids;
-	//vector<unsigned> sizes;
+	vector<unsigned> sizes; //stores sizeof key (sizeof rid not included)
 };
 
 // print out the error message for a given return code

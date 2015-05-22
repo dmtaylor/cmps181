@@ -165,7 +165,7 @@ error_return:
 
 
 int testCase_3(const string &indexFileName, const Attribute &attribute)
-{
+{ 
     // Functions tested
     // 1. Destroy Index File **
     // 2. Open Index File -- should fail
@@ -207,6 +207,7 @@ int testCase_3(const string &indexFileName, const Attribute &attribute)
     return success;
 error_return:
 	return fail;
+
 }
 
 int testCase_4A(const string &indexFileName, const Attribute &attribute)

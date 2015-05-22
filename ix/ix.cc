@@ -170,7 +170,7 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
     return result;
 }
 
-unsigned IndexManager::getKeySize(Attribute attribute, void* key){
+unsigned IndexManager::getKeySize(Attribute attribute, const void* key){
     unsigned size;
     
     switch(attribute.type){
@@ -409,8 +409,8 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
     
     LeafPageHeader leafHeader = getLeafPageHeader(pageData);
     
-    
-    for(unsigned i = 0; i < nonLeafHeader.recordsNumber; ++i){
+    //JAKE: changed from "for (...; i < nonLeafHeader.recordsNumber;...){" 
+    for(unsigned i = 0; i < leafHeader.recordsNumber; ++i){
         iter_key_size = getKeySize(attribute, (void *)((char*) pageData + offset));
         iter_key = calloc(iter_key_size, 1);
         memcpy(iter_key, (char*) pageData + offset, iter_key_size);
@@ -431,15 +431,22 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
     memmove((void*)( (char*) pageData + newDest), (void*)( (char*) pageData + offset), toMove);
     
     //insert new record
-    memcpy((void*)( (char*) pageData + offset), newChildEntry.key, keySize);
+	// JAKE: "key" changed from "newChildEntry.key"
+    memcpy((void*)( (char*) pageData + offset), key, keySize);
     
     memcpy((char*) pageData + offset + keySize, &rid, sizeof(RID));
     
+/*  DAVID
+
     //update free space pointer, records, set page header
 	nonLeafHeader.freeSpaceOffset += keySize + sizeof(RID);
     ++nonLeafHeader.recordsNumber;
 	setNonLeafPageHeader(pageData, nonLeafHeader);
-    
+*/
+	//JAKE DEBUG ATTEMPT
+    leafHeader.freeSpaceOffset += keySize + sizeof(RID);
+    ++leafHeader.recordsNumber;
+	setLeafPageHeader(pageData, leafHeader);
     return 0;
 }
 
@@ -602,7 +609,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	bool finished = false;
 	uint32_t root = getRootPageID(fileHandle);
 	uint32_t lowKeyPage;
-
+	
+	//store page that contains first valid record in "lowKeyPage"
 	treeSearch(fileHandle, attribute, lowKey, root, lowKeyPage);
 	
 	//Read page that contains lowKey
@@ -610,12 +618,12 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	fileHandle.readPage(lowKeyPage, pageData);
 	LeafPageHeader leafPageHeader = getLeafPageHeader(pageData);
 
-	//find first valid record inside lowKeyPage
-	uint32_t offset = sizeof(PageType) + sizeof(LeafPageHeader);
+	
 	uint32_t recordSize;
-
+	uint32_t offset = sizeof(PageType) + sizeof(LeafPageHeader);
 	uint32_t currRecordNumber = 0;
 
+	//find first valid record inside lowKeyPage
 	while (currRecordNumber < leafPageHeader.recordsNumber){
 
 		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
@@ -630,16 +638,23 @@ RC IndexManager::scan(FileHandle &fileHandle,
 
 	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator
 	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 && lowKeyInclusive){
-		
+		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
+
+		recordSize = sizeof(RID) + getKeySize( attribute, (void *)((char*)pageData + offset) );
+		offset +=recordSize;
+		++currRecordNumber;
 	}
 
+	//scan through each leaf page starting from lowKeyPage, loading records
+	//until no longer valid.
 	for(;;){
 
 		while(currRecordNumber<leafPageHeader.recordsNumber){
 
-			//if key no longer valid (greater than highKey) or equal to highkey
-			if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
-			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
+			//if key no longer valid: greater than highKey or equal to highkey
+			if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 ||
+				compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) < 0){
+
 				finished = true;
 				break;
 			}
@@ -649,15 +664,46 @@ RC IndexManager::scan(FileHandle &fileHandle,
 		}
 
 		if (finished) break;
-		fileHandle.readPage(leafPageHeader.nextPage, pageData);
+
+		if (fileHandle.readPage(leafPageHeader.nextPage, pageData) != SUCCESS){
+			fprintf(stderr, "IX.Scan(): pfm.readPage() failed\n");
+			return  ERROR_PFM_READPAGE;
+		}
+		leafPageHeader = getLeafPageHeader(pageData);
 		offset = sizeof(PageType) + sizeof(LeafPageHeader);
 		currRecordNumber = 0;
+		
 	}
 
 	//if lastvalid key == highKey and highKeyInclusive == true, push record into scan iterator
 	if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && highKeyInclusive){
-		
+		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 	}
+
+	return 0;
+}
+
+//takes in pointer to beginning of specific key-rid 
+RC IndexManager::pushBackRecord(void * recordOnPage, Attribute attribute, IX_ScanIterator& scanIterator){
+
+	uint32_t RIDoffset = getKeySize(attribute, recordOnPage);
+	//uint32_t recordSize = RIDoffset + sizeof(RID);
+
+	
+	void * key = malloc(RIDoffset);
+
+	//get key
+	memcpy(key, recordOnPage, RIDoffset);
+	scanIterator.keys.push_back(key);
+
+	//get RID
+	RID rid;
+	memcpy(&rid, ((char *) recordOnPage + RIDoffset), sizeof(RID));
+	scanIterator.rids.push_back(rid);
+
+	//get size
+	scanIterator.sizes.push_back(RIDoffset);
+
 
 	return 0;
 }
