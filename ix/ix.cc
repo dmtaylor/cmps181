@@ -797,7 +797,15 @@ IX_ScanIterator::~IX_ScanIterator()
 
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
-	return -1;
+	if(position == keys.size()) 
+		return RBFM_EOF; 
+	else {
+		rid = rids[position]; 
+		memcpy(key, keys[position], sizes[position]);
+		++position;
+	} 
+	 
+	return 0;   
 }
 
 RC IX_ScanIterator::close()
