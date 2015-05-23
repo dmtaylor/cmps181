@@ -606,6 +606,8 @@ RC IndexManager::scan(FileHandle &fileHandle,
     bool        	highKeyInclusive,
     IX_ScanIterator &ix_ScanIterator)
 {
+	//if(lowKey)
+
 	bool finished = false;
 	bool foundFirstRecord = false;
 	bool scannedAllRecords = false;
