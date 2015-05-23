@@ -103,6 +103,7 @@ unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 	return rootPageID;
 }
 
+//compareKeys(attribute,key1,  key2) < 0 if key1 < key2
 int IndexManager::compareKeys(const Attribute attribute, const void * key1, const void * key2){
     int result = -1;
     
@@ -121,7 +122,10 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
 		return -1;
 	}
 	else if(key2 == NULL){
-		return 1;
+		return -1;
+	}
+	else if(key1 == NULL && key2 == NULL){
+		fprintf(stderr, "ix.comparekeys(): two NULL values passed.");
 	}
 	else {;}
     
@@ -628,7 +632,8 @@ RC IndexManager::find(FileHandle &fileHandle, const Attribute attribute, const v
 }
 */
 
-//treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID)
+
+//compareKeys(attribute,key1,  key2) < 0 if key1 < key2
 RC IndexManager::scan(FileHandle &fileHandle,
     const Attribute &attribute,
     const void      *lowKey,
@@ -699,7 +704,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	for(;;){
 
 		while(currRecordNumber<leafPageHeader.recordsNumber){
-
+/*
 			//if key no longer valid: greater than highKey or equal to highkey
 			if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 ||
 				compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) < 0){
@@ -707,6 +712,17 @@ RC IndexManager::scan(FileHandle &fileHandle,
 				finished = true;
 				break;
 			}
+*/
+			//attempt2
+			if (compareKeys(attribute, (void *)((char*)pageData + offset), highKey ) == 0 ||
+				compareKeys(attribute, (void *)((char*)pageData + offset), highKey) > 0){
+
+				finished = true;
+				break;
+			}
+
+
+			pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 			recordSize = sizeof(RID) + getKeySize( attribute, (void *)((char*)pageData + offset) );
 			offset +=recordSize;
 			++currRecordNumber;
@@ -725,17 +741,21 @@ RC IndexManager::scan(FileHandle &fileHandle,
 			fprintf(stderr, "IX.Scan(): pfm.readPage() failed\n");
 			return  ERROR_PFM_READPAGE;
 		}
+
+		//error check?
 		leafPageHeader = getLeafPageHeader(pageData);
 		offset = sizeof(PageType) + sizeof(LeafPageHeader);
 		currRecordNumber = 0;
 		
 	}
 
+	if (!scannedAllRecords){
 	//if lastvalid key == highKey and highKeyInclusive == true, push record into scan iterator
-	if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && highKeyInclusive){
-		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
-	}
-    
+		if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && 			 	
+			highKeyInclusive){
+			pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
+		}
+    }
     free(pageData);
     
 	return 0;
