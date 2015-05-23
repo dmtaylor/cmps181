@@ -150,6 +150,9 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
         
         key1Str = (char *)calloc(key1Len + 1, 1);
         key2Str = (char *)calloc(key2Len + 1, 1);
+        
+        key1Str[key1Len] = 0;
+        key2Str[key2Len] = 0;
 
 	//Do we have to add null plugs?
         
@@ -568,9 +571,16 @@ RC IndexManager::treeSearch(FileHandle &fileHandle, const Attribute attribute, c
 		free(pageData);
 		return SUCCESS;
 	}
-
-	// Otherwise, we go one level below (towards the correct son page) and call the method again.
-	unsigned sonPageID = getSonPageID(attribute, key, pageData);
+    
+    
+    unsigned sonPageID;
+    if(key == NULL){
+        memcpy(&sonPageID, (char*) pageData + sizeof(PageType) + sizeof(NonLeafPageHeader), sizeof(unsigned));
+    }
+    else{
+        // Otherwise, we go one level below (towards the correct son page) and call the method again.
+    	sonPageID = getSonPageID(attribute, key, pageData);
+    }
 
 	free(pageData);
 
@@ -614,6 +624,10 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	
 	//store page that contains first valid record in "lowKeyPage"
 	treeSearch(fileHandle, attribute, lowKey, root, lowKeyPage);
+    
+    if(lowKeyPage == 0){
+        fprintf(stderr, "IndexManager.scan: invalid lower page found\n");
+    }
 	
 	//Read page that contains lowKey
 	void * pageData = malloc(PAGE_SIZE);
@@ -693,7 +707,9 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && highKeyInclusive){
 		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 	}
-
+    
+    free(pageData);
+    
 	return 0;
 }
 
