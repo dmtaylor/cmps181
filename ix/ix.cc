@@ -116,6 +116,14 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
     uint32_t key2Len;
     char* key1Str;
     char* key2Str;
+
+	if(key1 == NULL){
+		return -1;
+	}
+	else if(key2 == NULL){
+		return 1;
+	}
+	else {;}
     
     if(attribute.type == TypeInt){
         memcpy(&key1IntVal, key1, INT_SIZE);
@@ -484,7 +492,11 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
-    
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.insertEntry(): unopened file passed to insertEntry\n");
+		return ERROR_PFM_FILEHANDLE;
+	}    
+
     ChildEntry newChildEntry;
 	newChildEntry.key = NULL;
 
@@ -551,12 +563,21 @@ RC IndexManager::deleteEntryFromLeaf(const Attribute &attribute, const void *key
 
 RC IndexManager::deleteEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
 {
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.deleteEntry(): unopened file passed to deleteEntry\n");
+		return ERROR_PFM_FILEHANDLE;
+	}
 	return -1;
 }
 
 // Recursive search through the tree, returning the page ID of the leaf page that should contain the input key.
 RC IndexManager::treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID)
 {
+
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.treeSearch(): unopened file passed to treeSearch\n");
+		return ERROR_PFM_FILEHANDLE;
+	}
 
 	void * pageData = malloc(PAGE_SIZE);
 
@@ -617,6 +638,11 @@ RC IndexManager::scan(FileHandle &fileHandle,
     IX_ScanIterator &ix_ScanIterator)
 {
 	//if(lowKey)
+	
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.scan: unopened file passed to scan\n");
+		return ERROR_PFM_FILEHANDLE;
+	}
 
 	bool finished = false;
 	bool foundFirstRecord = false;
@@ -643,7 +669,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 
 	//Set offset to first valid record inside lowKeyPage
 	while (currRecordNumber < leafPageHeader.recordsNumber){
-
+		//if lowKey null break
 		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
 			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
 			foundFirstRecord = true;
