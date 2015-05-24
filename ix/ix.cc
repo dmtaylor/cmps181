@@ -481,6 +481,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         //TODO
         if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
+			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
 			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
@@ -488,13 +489,49 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             newChildEntry = NULL;
             return 0;
 		} else{
-
+			//leaf page needs to be split
 			void* splitPage1 = calloc(PAGE_SIZE, 1);
 			void* splitPage2 = calloc(PAGE_SIZE, 1);
 			if(splitPage1 == NULL || splitPage2 == NULL){
 				fprintf(stderr, "IndexManager.insert: ran out of memory\n");
 				return ERROR_UNKNOWN;
 			}
+			LeafPageHeader splitHeader;
+			setPageType(split1Page, LeafPage);
+            setPageType(split2Page, LeafPage);
+
+			void* tempPage = calloc(2*PAGE_SIZE, 1);
+            if(tempPage == NULL){
+                fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+                return ERROR_UNKNOWN;
+            }
+			
+			memcpy(tempPage, pageData, PAGE_SIZE);
+			insertLeafRecord(attribute, key, rid, tempPage);
+
+			LeafPageHeader tempLpHeader = getLeafPageHeader(tempPage);
+
+			toSplitOffset = sizeof(PageType) + sizeof(LeafPageHeader);
+            unsigned midRecord = tempLpHeader.recordsNumber / 2;
+            int i;
+            unsigned iter_size;
+            for(i=0; i < midRecord; ++i){
+                if(attribute.type == TypeVarChar){
+                    memcpy(&iter_size, (char*) tempPage + toSplitOffset, VARCHAR_LENGTH_SIZE);
+                    toSplitOffset += iter_size + VARCHAR_LENGTH_SIZE + sizeof(RID);
+                }
+                else if(attribute.type == TypeInt){
+                    toSplitOffset += INT_SIZE + sizeof(RID);
+                }
+                else if(attribute.type == TypeReal){
+                    toSplitOffset += REAL_SIZE + sizeof(RID);
+                }
+                else{
+                    fprintf(stderr, "IndexManager.insert: Invalid attribute type\n");
+                    return ERROR_UNKNOWN;
+                }
+            }
+			
 
 
 		}       
