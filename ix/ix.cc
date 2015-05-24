@@ -709,7 +709,32 @@ RC IndexManager::deleteEntry(FileHandle &fileHandle, const Attribute &attribute,
 		fprintf(stderr, "IndexManager.deleteEntry(): unopened file passed to deleteEntry\n");
 		return ERROR_PFM_FILEHANDLE;
 	}
-	return -1;
+    unsigned leafPageNum;
+    
+    //find the leaf page for the delete
+    int res = treeSearch(fileHandle, attribute, key, getRootPageID(fileHandle), leafPageNum);
+    if(res != SUCCESS){
+        fprintf(stderr, "IndexManager.deleteEntry: tree search failed\n");
+        return res;
+    }
+    
+    void* leafPageData = calloc(PAGE_SIZE, 1);
+    if(fileHandle.readPage(leafPageNum, leafPageData) != SUCCESS){
+        fprintf(stderr, "IndexManager.deleteEntry: cannot read leaf page\n");
+        return ERROR_PFM_READPAGE;
+    }
+    
+    res = deleteEntryFromLeaf(attribute, key, rid, leafPageData);
+    if(res != SUCCESS){
+        return res;
+    }
+    
+    if(fileHandle.writePage(leafPageNum, leafPageData) != SUCCESS){
+        fprintf(stderr, "IndexManager.deleteEntry: write leaf failed\n");
+        return ERROR_PFM_WRITEPAGE;
+    }
+    
+	return 0;
 }
 
 // Recursive search through the tree, returning the page ID of the leaf page that should contain the input key.
