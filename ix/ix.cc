@@ -486,7 +486,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
             }
-            newChildEntry = NULL;
+            newChildEntry.key = NULL;
             return 0;
 		} else{
 			//leaf page needs to be split
@@ -614,7 +614,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
         }
         
         //not sure about this equality
-        if(newChildEntry == NULL){
+        if(newChildEntry.key == NULL){
             return 0;
         }
         
@@ -623,8 +623,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
             }
-			//TODO: Key needs to be set to null, not item
-            newChildEntry = NULL; 
+            
+            newChildEntry.key = NULL; 
             return 0;
         }
         else{
