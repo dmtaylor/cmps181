@@ -76,6 +76,7 @@ typedef struct
 {
   void * key;
   unsigned childPageNumber;
+  bool isNull = false;
 } ChildEntry;
 
 // PageType definition
@@ -122,7 +123,7 @@ class IndexManager {
   // If highKey is null, then the range is lowKey to +infinity
   RC scan(FileHandle &fileHandle,
       const Attribute &attribute,
-	const void        *lowKey,
+	    const void        *lowKey,
       const void        *highKey,
       bool        lowKeyInclusive,
       bool        highKeyInclusive,
@@ -134,7 +135,7 @@ class IndexManager {
 
  private:
     static IndexManager *_index_manager;
-	static PagedFileManager *_pf_manager;
+	  static PagedFileManager *_pf_manager;
 
 //    void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
 //	void setIndexHeader(void * page, IndexPageHeader indexHeader);

@@ -91,6 +91,11 @@ bool IndexManager::isLeafPage(void * pageData)
 // Gets the current root page ID by reading the first page of the file (which only task is containing it).
 unsigned IndexManager::getRootPageID(FileHandle fileHandle)
 {
+
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.getRootPageID(): unopened file passed to deleteEntry\n");
+		return ERROR_PFM_FILEHANDLE;
+	}
 	void * pageData = malloc(PAGE_SIZE);
 
 	// Root page ID is stored in the first bytes of page 0.
@@ -223,11 +228,10 @@ unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key,
 	char varCharFlag = 0;
 
 	AttrType type = attribute.type;
-	if (type == TypeInt || TypeReal)
+	if (type == TypeInt || type == TypeReal)
 		size = INT_SIZE;
 	else 
 		varCharFlag = 1;
-
 
 	uint32_t offset = sizeof(PageType) + sizeof(NonLeafPageHeader);
 
@@ -467,26 +471,34 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 {
 	void* pageData = calloc(PAGE_SIZE, 1);
     
+	if(fileHandle.getFileDescriptor() == NULL){
+		fprintf(stderr, "IndexManager.insert(): unopened file passed to deleteEntry\n");
+		return ERROR_PFM_FILEHANDLE;
+	}
+
     if(fileHandle.readPage(pageID, pageData) != SUCCESS){
         return ERROR_PFM_READPAGE;
     }
     
     PageType isLeaf = getPageType(pageData);
-    unsigned keySize = getKeySize(attribute, key);
+    //unsigned keySize = getKeySize(attribute, key);
     unsigned toSplitOffset = 0;
     
     
     // Do insert on leaf record
-    if(isLeaf){
+    if(isLeaf == LeafPage){
+		cout << "checkpoint 1!: ix.insert: pageID = "<< pageID << endl;
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         
         if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
+			
 			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
 			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
             }
-            newChildEntry.key = NULL;
+            //newChildEntry.key = NULL;
+			newChildEntry.isNull = true;
             return 0;
 		} else{
 			//leaf page needs to be split
@@ -518,7 +530,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             // find split point
 			toSplitOffset = sizeof(PageType) + sizeof(LeafPageHeader);
             unsigned midRecord = tempLpHeader.recordsNumber / 2;
-            int i;
+            unsigned i;
             unsigned iter_size;
             for(i=0; i < midRecord; ++i){
                 if(attribute.type == TypeVarChar){
@@ -556,7 +568,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             void* midKey = malloc(midKeySize);
             memcpy(midKey, (char*) tempPage + toSplitOffset, midKeySize);
             newChildEntry.key = midKey;
-            
+            newChildEntry.isNull = false;
             
             // copy right split page
             memcpy((char*) splitPage2 + sizeof(PageType) + sizeof(LeafPageHeader),
@@ -612,11 +624,13 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 childID, pageID);
             return res;
         }
-        
+        /*
         //not sure about this equality
         if(newChildEntry.key == NULL){
             return 0;
-        }
+        }*/
+		if (newChildEntry.isNull)
+			return 0;
         
         if(PAGE_SIZE - nlpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
             insertNonLeafRecord(attribute, newChildEntry, pageData);
@@ -624,7 +638,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 return ERROR_PFM_WRITEPAGE;
             }
             
-            newChildEntry.key = NULL; 
+            //newChildEntry.key = NULL; 
+			newChildEntry.isNull = true;
             return 0;
         }
         else{
@@ -688,7 +703,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             newChildEntry.key = malloc(childKeySize);
             memcpy(newChildEntry.key, (char*) tempPage + toSplitOffset, childKeySize);
             toSplitOffset += childKeySize;
-            
+            newChildEntry.isNull = false;
+
             //handle second page
             memcpy((char*) splitPage2 + sizeof(PageType) + sizeof(NonLeafPageHeader),
                 (char*) tempPage + toSplitOffset, tempNlpHeader.freeSpaceOffset - toSplitOffset);
@@ -749,13 +765,15 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 }
 
 RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
-{
+{	
+	
 	if(fileHandle.getFileDescriptor() == NULL){
 		fprintf(stderr, "IndexManager.insertEntry(): unopened file passed to insertEntry\n");
 		return ERROR_PFM_FILEHANDLE;
 	}    
-
+	
     ChildEntry newChildEntry;
+	newChildEntry.isNull = true;//or false?
 	newChildEntry.key = NULL;
 
 	// Recursive insert, starting from the root page.
@@ -774,7 +792,7 @@ RC IndexManager::deleteEntryFromLeaf(const Attribute &attribute, const void *key
     LeafPageHeader lpHeader = getLeafPageHeader(pageData);
     
     // index into leaf until we find record to delete
-    int i;
+    unsigned i;
     for(i = 0; i < lpHeader.recordsNumber; ++i){
         if(compareKeys(attribute, key, (char*) pageData + baseOffset) == 0){
             foundFlag = true;
@@ -1017,7 +1035,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 
 	if (!scannedAllRecords){
 	//if lastvalid key == highKey and highKeyInclusive == true, push record into scan iterator
-		if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && 			 	
+		if (compareKeys(attribute, highKey, (void *)((char*)pageData + offset)) == 0 && 
 			highKeyInclusive){
 			pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 		}
@@ -1040,7 +1058,6 @@ RC IndexManager::pushBackRecord(void * recordOnPage, Attribute attribute, IX_Sca
 	memcpy(key, recordOnPage, RIDoffset);
 	scanIterator.keys.push_back(key);
 
-	//TODO: Possible point that is segfaulting.
 	//get RID
 	RID rid;
 	memcpy(&rid, (char *) recordOnPage + RIDoffset, sizeof(RID));

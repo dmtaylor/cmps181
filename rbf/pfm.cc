@@ -56,7 +56,7 @@ RC PagedFileManager::createFile(const char *fileName)
 {
 	// If file already exists, error.
 	if (FileExists(string(fileName))){
-		fprintf(stderr, "pfm.createFile(): '%s' is already a fileName", fileName);
+		fprintf(stderr, "pfm.createFile(): '%s' is already a fileName\n", fileName);
 		return 1;
 	}
     FILE * pFile;
