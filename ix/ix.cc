@@ -186,6 +186,8 @@ int IndexManager::compareKeys(const Attribute attribute, const void * key1, cons
 }
 
 unsigned IndexManager::getKeySize(Attribute attribute, const void* key){
+    if(key == NULL) return 0;
+    
     unsigned size;
     
     switch(attribute.type){
@@ -477,19 +479,159 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     }
     
     PageType isLeaf = getPageType(pageData);
+    unsigned keySize = getKeySize(attribute, key);
+    unsigned toSplitOffset = 0;
     
     
     // Do insert on leaf record
     if(isLeaf){
+        LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         //TODO
+        
         
     }//Do non-leaf insert
     else{
-        //TODO
+        NonLeafPageHeader nlpHeader = getNonLeafPageHeader(pageData);
+        
+        unsigned childID = getSonID(attribute, key, pageData);
+        
+        int res = insert(attribute, key, rid, fileHandle, childID, newChildEntry);
+        if(res != SUCCESS){
+            fprintf(stderr, "IndexManager.insert: sub-insert on page %u from %u failed\n",
+                childID, pageID);
+            return res;
+        }
+        
+        //not sure about this equality
+        if(newChildEntry == NULL){
+            return 0;
+        }
+        
+        if(PAGE_SIZE - nlpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
+            insertNonLeafRecord(attribute, newChildEntry, pageData);
+            if(fileHandle.writePage(pageID, pageData) != SUCCESS){
+                return ERROR_PFM_WRITEPAGE;
+            }
+            newChildEntry = NULL;
+            return 0;
+        }
+        else{
+            // initialize the sub pages that will be saved to disk
+            void* splitPage1 = calloc(PAGE_SIZE, 1);
+            void* splitPage2 = calloc(PAGE_SIZE, 1);
+            if(splitPage1 == NULL || splitPage2 == NULL){
+                fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+                return ERROR_UNKNOWN;
+            }
+            NonLeafPageHeader splitHeader;
+            setPageType(split1Page, NonLeafPage);
+            setPageType(split2Page, NonLeafPage);
+            
+            void* tempPage = calloc(2*PAGE_SIZE, 1);
+            if(tempPage == NULL){
+                fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+                return ERROR_UNKNOWN;
+            }
+            memcpy(tempPage, pageData, PAGE_SIZE);
+            insertNonLeafRecord(attribute, newChildEntry, tempPage);
+            NonLeafPageHeader tempNlpHeader = getNonLeafPageHeader(tempPage);
+            
+            toSplitOffset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
+            unsigned midRecord = tempNlpHeader.recordsNumber / 2;
+            int i;
+            unsigned iter_size;
+            for(i=0; i < midRecord; ++i){
+                if(attribute.type == TypeVarChar){
+                    memcpy(&iter_size, (char*) tempPage + toSplitOffset, VARCHAR_LENGTH_SIZE);
+                    toSplitOffset += iter_size + VARCHAR_LENGTH_SIZE + sizeof(unsigned);
+                }
+                else if(attribute.type == TypeInt){
+                    toSplitOffset += INT_SIZE + sizeof(unsigned);
+                }
+                else if(attribute.type == TypeReal){
+                    toSplitOffset += REAL_SIZE + sizeof(unsigned);
+                }
+                else{
+                    fprintf(stderr, "IndexManager.insert: Invalid attribute type\n");
+                    return ERROR_UNKNOWN;
+                }
+            }
+            
+            //handle first split page
+            memcpy((char*) splitPage1 + sizeof(PageType) + sizeof(NonLeafPageHeader),
+                    (char*) tempPage + sizeof(PageType) + sizeof(NonLeafPageHeader),
+                    toSplitOffset - sizeof(PageType) - sizeof(NonLeafPageHeader));
+                    
+            splitHeader.recordsNumber = i;
+            splitHeader.freeSpaceOffset = toSplitOffset;
+            setNonLeafPageHeader(splitPage1, splitHeader);
+            
+            fileHandle.writePage(pageID, splitPage1);
+            
+            free(splitPage1);
+            
+            //handle key to be passed, page num will be later
+            unsigned childKeySize = getKeySize(attribute, (char*) tempPage + toSplitOffset);
+            free(newChildEntry.key);
+            newChildEntry.key = malloc(childKeySize);
+            memcpy(newChildEntry.key, (char*) tempPage + toSplitOffset, childKeySize);
+            toSplitOffset += childKeySize;
+            
+            //handle second page
+            memcpy((char*) splitPage2 + sizeof(PageType) + sizeof(NonLeafPageHeader),
+                (char*) tempPage + toSplitOffset, tempNlpHeader.freeSpaceOffset - toSplitOffset);
+                
+            splitHeader.recordsNumber = tempNlpHeader.recordsNumber - i - 1;
+            splitHeader.freeSpaceOffset = tempNlpHeader.freeSpaceOffset - toSplitOffset +
+                        sizeof(PageType) + sizeof(NonLeafPageHeader);
+            
+            setNonLeafPageHeader(splitPage2, splitHeader);
+            
+            if(fileHandle.appendPage(splitPage2) != SUCCESS){
+                fprintf(stderr, "IndexManager.insert: appending split page failed\n");
+                return ERROR_PFM_WRITEPAGE;
+            }
+            free(splitPage2);
+            free(tempPage);
+            
+            //set the new child page #
+            newChildEntry.childPageNumber = fileHandle.getNumberOfPages() -1;
+            
+            // Handling a split root
+            if(pageID == getRootPageID(fileHandle)){
+                void* newRoot = calloc(PAGE_SIZE, 1);
+                setPageType(newRoot, NonLeafPage);
+                splitHeader.recordsNumber = 0;
+                splitHeader.freeSpaceOffset = sizeof(PageType) + sizeof(NonLeafHeader) + sizeof(unsigned);
+                setNonLeafPageHeader(newRoot, splitHeader);
+                memcpy((char*) newRoot + sizeof(PageType) + sizeof(NonLeafHeader),
+                        &pageID, sizeof(unsigned));
+                        
+                insertNonLeafRecord(attribute, newChildEntry, newRoot);
+                if(fileHandle.append(newRoot) != SUCCESS){
+                    fprintf(stderr, "IndexManager.insert: appending new root page failed\n");
+                    return ERROR_PFM_WRITEPAGE;
+                }
+                unsigned newRootNum = fileHandle.getNumberOfPages() -1;
+                
+                // set the base root num. We are reusing the newRoot pointer:
+                // it now will point to page 0 containing the root number
+                
+                if(fileHandle.readPage(0, newRoot) != SUCCESS){
+                    fprintf(stderr, "Indexmanager.insert: cannot read root base page\n");
+                    return ERROR_PFM_READPAGE;
+                }
+                memcpy(newRoot, &newRootNum, sizeof(unsigned));
+                if(fileHandle.writePage(0, newRoot) != SUCCESS){
+                    fprintf(stderr, "Indexmanager.insert: cannot write root base page\n");
+                    return ERROR_PFM_WRITEPAGE;
+                }
+                
+            }
+            
+        }
         
     }
-    
-    
     
     return 0;
 }

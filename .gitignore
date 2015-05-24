@@ -18,3 +18,5 @@ rm/*.err
 rm/*.log
 rm/rmtest*
 !rm/*.cc
+
+temp_file.*
