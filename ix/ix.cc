@@ -500,8 +500,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 			}
 			LeafPageHeader splitHeader1;
             LeafPageHeader splitHeader2;
-			setPageType(split1Page, LeafPage);
-            setPageType(split2Page, LeafPage);
+			setPageType(splitPage1, LeafPage);
+            setPageType(splitPage2, LeafPage);
             
             // set up merged doublepage
 			void* tempPage = calloc(2*PAGE_SIZE, 1);
@@ -604,7 +604,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     else{
         NonLeafPageHeader nlpHeader = getNonLeafPageHeader(pageData);
         
-        unsigned childID = getSonID(attribute, key, pageData);
+        unsigned childID = getSonPageID(attribute, key, pageData);
         
         int res = insert(attribute, key, rid, fileHandle, childID, newChildEntry);
         if(res != SUCCESS){
@@ -623,7 +623,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
             }
-            newChildEntry = NULL;
+			//TODO: Key needs to be set to null, not item
+            newChildEntry = NULL; 
             return 0;
         }
         else{
@@ -635,8 +636,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 return ERROR_UNKNOWN;
             }
             NonLeafPageHeader splitHeader;
-            setPageType(split1Page, NonLeafPage);
-            setPageType(split2Page, NonLeafPage);
+            setPageType(splitPage1, NonLeafPage);
+            setPageType(splitPage2, NonLeafPage);
             
             void* tempPage = calloc(2*PAGE_SIZE, 1);
             if(tempPage == NULL){
@@ -649,7 +650,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             
             toSplitOffset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
             unsigned midRecord = tempNlpHeader.recordsNumber / 2;
-            int i;
+            unsigned i;
             unsigned iter_size;
             for(i=0; i < midRecord; ++i){
                 if(attribute.type == TypeVarChar){
@@ -713,13 +714,13 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 void* newRoot = calloc(PAGE_SIZE, 1);
                 setPageType(newRoot, NonLeafPage);
                 splitHeader.recordsNumber = 0;
-                splitHeader.freeSpaceOffset = sizeof(PageType) + sizeof(NonLeafHeader) + sizeof(unsigned);
+                splitHeader.freeSpaceOffset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
                 setNonLeafPageHeader(newRoot, splitHeader);
-                memcpy((char*) newRoot + sizeof(PageType) + sizeof(NonLeafHeader),
+                memcpy((char*) newRoot + sizeof(PageType) + sizeof(NonLeafPageHeader),
                         &pageID, sizeof(unsigned));
                         
                 insertNonLeafRecord(attribute, newChildEntry, newRoot);
-                if(fileHandle.append(newRoot) != SUCCESS){
+                if(fileHandle.appendPage(newRoot) != SUCCESS){
                     fprintf(stderr, "IndexManager.insert: appending new root page failed\n");
                     return ERROR_PFM_WRITEPAGE;
                 }
@@ -800,7 +801,7 @@ RC IndexManager::deleteEntryFromLeaf(const Attribute &attribute, const void *key
     --lpHeader.recordsNumber;
     lpHeader.freeSpaceOffset -= toDeleteSize;
     
-    setLeafHeader(pageData, lpHeader);
+    setLeafPageHeader(pageData, lpHeader);
     
     return 0;
 }
@@ -1054,6 +1055,7 @@ RC IndexManager::pushBackRecord(void * recordOnPage, Attribute attribute, IX_Sca
 
 IX_ScanIterator::IX_ScanIterator()
 {
+position = 0;
 }
 
 IX_ScanIterator::~IX_ScanIterator()

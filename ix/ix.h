@@ -186,7 +186,7 @@ class IX_ScanIterator {
   RC getNextEntry(RID &rid, void *key);  		// Get next matching entry
   RC close();             						// Terminate index scan
 
-	uint32_t position (0);
+	unsigned position;
 	vector<void *> keys; 
 	vector<RID> rids;
 	vector<unsigned> sizes; //stores sizeof key (sizeof rid not included)
