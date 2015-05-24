@@ -480,8 +480,24 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     if(isLeaf){
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         //TODO
-        
-        
+        if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
+			insertLeafRecord(attribute, key, rid, pageData);
+			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
+                return ERROR_PFM_WRITEPAGE;
+            }
+            newChildEntry = NULL;
+            return 0;
+		} else{
+
+			void* splitPage1 = calloc(PAGE_SIZE, 1);
+			void* splitPage2 = calloc(PAGE_SIZE, 1);
+			if(splitPage1 == NULL || splitPage2 == NULL){
+				fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+				return ERROR_UNKNOWN;
+			}
+
+
+		}       
     }//Do non-leaf insert
     else{
         NonLeafPageHeader nlpHeader = getNonLeafPageHeader(pageData);
