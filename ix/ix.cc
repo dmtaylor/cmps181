@@ -487,11 +487,11 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     
     // Do insert on leaf record
     if(isLeaf == LeafPage){
-		cout << "checkpoint 1!: ix.insert: pageID = "<< pageID << endl;
+		cout << "LEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         
         if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
-			
+			cout << "LEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
 			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
 			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
@@ -501,6 +501,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 			newChildEntry.isNull = true;
             return 0;
 		} else{
+			cout << "LEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
 			//leaf page needs to be split
             
             // init aux storage
@@ -614,6 +615,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 		}       
     }//Do non-leaf insert
     else{
+		cout << "NONLEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
         NonLeafPageHeader nlpHeader = getNonLeafPageHeader(pageData);
         
         unsigned childID = getSonPageID(attribute, key, pageData);
@@ -633,6 +635,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 			return 0;
         
         if(PAGE_SIZE - nlpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
+			cout << "NONLEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
             insertNonLeafRecord(attribute, newChildEntry, pageData);
             if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 return ERROR_PFM_WRITEPAGE;
@@ -643,6 +646,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             return 0;
         }
         else{
+			cout << "NONLEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
             // initialize the sub pages that will be saved to disk
             void* splitPage1 = calloc(PAGE_SIZE, 1);
             void* splitPage2 = calloc(PAGE_SIZE, 1);
@@ -727,6 +731,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             
             // Handling a split root
             if(pageID == getRootPageID(fileHandle)){
+				cout << "ROOT SPLITTING"<< endl;
                 void* newRoot = calloc(PAGE_SIZE, 1);
                 setPageType(newRoot, NonLeafPage);
                 splitHeader.recordsNumber = 0;
@@ -773,7 +778,7 @@ RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute,
 	}    
 	
     ChildEntry newChildEntry;
-	newChildEntry.isNull = true;//or false?
+	newChildEntry.isNull = true;
 	newChildEntry.key = NULL;
 
 	// Recursive insert, starting from the root page.
@@ -1094,7 +1099,11 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 
 RC IX_ScanIterator::close()
 {
-	return -1;
+	for(unsigned i = 0; i < keys.size(); ++i){
+      free(keys[i]);
+   }
+
+	return 0;
 }
 
 void IX_PrintError (RC rc)
