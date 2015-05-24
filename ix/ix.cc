@@ -453,14 +453,7 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
     
     memcpy((char*) pageData + offset + keySize, &rid, sizeof(RID));
     
-/*  DAVID
-
-    //update free space pointer, records, set page header
-	nonLeafHeader.freeSpaceOffset += keySize + sizeof(RID);
-    ++nonLeafHeader.recordsNumber;
-	setNonLeafPageHeader(pageData, nonLeafHeader);
-*/
-	//JAKE DEBUG ATTEMPT
+    //setting headers
     leafHeader.freeSpaceOffset += keySize + sizeof(RID);
     ++leafHeader.recordsNumber;
 	setLeafPageHeader(pageData, leafHeader);
@@ -648,63 +641,50 @@ RC IndexManager::insertEntry(FileHandle &fileHandle, const Attribute &attribute,
 
 	// Recursive insert, starting from the root page.
 	return insert(attribute, key, rid, fileHandle, getRootPageID(fileHandle), newChildEntry);
-    
-	/*IndexPageHeader indexHeader; 
-	unsigned i;
-	unsigned numberOfPages = fileHandle.getNumberOfPages();
-	unsigned rootPageNumber;
-	void * curr = malloc(PAGE_SIZE);
-	
-
-	//setting "void * curr" to root page
-	for (i = 0; i < numberOfPages; ++i){
-
-		if (fileHandle.readPage(i, curr) != SUCCESS){
-			fprintf(stderr, "IX.insertEntry(): page %u could not be read", i);			
-			return 1;	
-		}	
-		//node with parentPage == NULL is root
-		indexHeader = getIndexHeader(curr);
-		if (indexHeader.parentPage == IX_NULL_PAGE){
-			rootPageNumber = i;
-			break;
-		}
-
-	}
-
-
-
-	
-	void * record;
-	unsigned recordNumber;
-	unsigned nextRecordOffset;
-	unsigned destinationPage;	
-	int memcmp;
-
-	//Geting to correct leafnode from root
-	while (!indexHeader.isLeaf){
-		
-		record = curr + indexHeader.firstRecordOffset;
-		recordNumber = 1;		
-
-		while(recordNumber < indexHeader.numberOfRecords){
-			nextRecordOffset = r	
-			
-			memcmp = memcmp(key, );
-
-		}
-						
-	}		
-*/
-
-
-	return 0;
 }
 
 // Given a record entry <key, rid>, deletes it from the leaf page "pageData".
 RC IndexManager::deleteEntryFromLeaf(const Attribute &attribute, const void *key, const RID &rid, void * pageData)
 {
-	return -1;
+	unsigned baseOffset = sizeof(PageType) + sizeof(LeafPageHeader);
+    unsigned remainderOffset;
+    unsigned toDeleteSize;
+    unsigned remainderSize;
+    bool foundFlag = false;
+    
+    LeafPageHeader lpHeader = getLeafPageHeader(pageData);
+    
+    // index into leaf until we find record to delete
+    int i;
+    for(i = 0; i < lpHeader.recordsNumber; ++i){
+        if(compareKeys(attribute, key, (char*) pageData + baseOffset) == 0){
+            foundFlag = true;
+            break;
+        }
+        
+        baseOffset += getKeySize(attribute, (char*) pageData + baseOffset) + sizeof(RID);
+        
+    }
+    
+    // if the key is not found, return an error
+    if(!foundFlag){
+        fprintf(stderr, "IndexManager.delete: key not found\n");
+        return ERROR_RECORD_NOT_EXISTS;
+    }
+    
+    // set up offsets and sizes for move
+    toDeleteSize = getKeySize(attribute, (char*) pageData + baseOffset) + sizeof(RID);
+    remainderOffset = baseOffset + toDeleteSize;
+    remainderSize = lpHeader.freeSpaceOffset - remainderOffset;
+    
+    // overwrite entry to be deleted by moving remaining records on top of it
+    memmove((char*) pageData + baseOffset, (char*) pageData + remainderOffset, remainderSize);
+    --lpHeader.recordsNumber;
+    lpHeader.freeSpaceOffset -= toDeleteSize;
+    
+    setLeafHeader(pageData, lpHeader);
+    
+    return 0;
 }
 
 RC IndexManager::deleteEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
