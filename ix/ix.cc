@@ -479,7 +479,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     // Do insert on leaf record
     if(isLeaf){
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
-        //TODO
+        
         if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
 			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
@@ -490,27 +490,32 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             return 0;
 		} else{
 			//leaf page needs to be split
+            
+            // init aux storage
 			void* splitPage1 = calloc(PAGE_SIZE, 1);
 			void* splitPage2 = calloc(PAGE_SIZE, 1);
 			if(splitPage1 == NULL || splitPage2 == NULL){
 				fprintf(stderr, "IndexManager.insert: ran out of memory\n");
 				return ERROR_UNKNOWN;
 			}
-			LeafPageHeader splitHeader;
+			LeafPageHeader splitHeader1;
+            LeafPageHeader splitHeader2;
 			setPageType(split1Page, LeafPage);
             setPageType(split2Page, LeafPage);
-
+            
+            // set up merged doublepage
 			void* tempPage = calloc(2*PAGE_SIZE, 1);
             if(tempPage == NULL){
                 fprintf(stderr, "IndexManager.insert: ran out of memory\n");
                 return ERROR_UNKNOWN;
             }
 			
+            //copy records over
 			memcpy(tempPage, pageData, PAGE_SIZE);
 			insertLeafRecord(attribute, key, rid, tempPage);
 
 			LeafPageHeader tempLpHeader = getLeafPageHeader(tempPage);
-
+            // find split point
 			toSplitOffset = sizeof(PageType) + sizeof(LeafPageHeader);
             unsigned midRecord = tempLpHeader.recordsNumber / 2;
             int i;
@@ -531,9 +536,69 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                     return ERROR_UNKNOWN;
                 }
             }
+            
+            //save pointers
+            unsigned oldNext = lpHeader.nextPage;
+            unsigned oldPrev = lpHeader.prevPage;
+            
+            //copy page in left split
+            memcpy((char*) splitPage1 + sizeof(PageType) + sizeof(LeafPageHeader),
+                    (char*) tempPage + sizeof(PageType) + sizeof(LeafPageHeader),
+                    toSplitOffset - sizeof(PageType) - sizeof(LeafPageHeader));
+                    
+            //set page info fields
+            splitHeader1.freeSpaceOffset = toSplitOffset;
+            splitHeader1.recordsNumber = i;
+            
+            //get middle key
+            
+            unsigned midKeySize = getKeySize(attribute, (char*) tempPage + toSplitOffset);
+            void* midKey = malloc(midKeySize);
+            memcpy(midKey, (char*) tempPage + toSplitOffset, midKeySize);
+            newChildEntry.key = midKey;
+            
+            
+            // copy right split page
+            memcpy((char*) splitPage2 + sizeof(PageType) + sizeof(LeafPageHeader),
+                    (char*) tempPage + toSplitOffset,
+                    tempLpHeader.freeSpaceOffset - toSplitOffset);
+                    
+            splitHeader2.freeSpaceOffset = sizeof(PageType) + sizeof(LeafPageHeader) + tempLpHeader.freeSpaceOffset - toSplitOffset;
+            splitHeader2.recordsNumber = tempLpHeader.recordsNumber - i;
+            
+            //set page pointers
+            
+            splitHeader2.prevPage = pageID;
+            splitHeader2.nextPage = oldNext;
+            
+            setLeafPageHeader(splitPage2, splitHeader2);
+            
+            if(fileHandle.appendPage(splitPage2) != SUCCESS){
+                fprintf(stderr, "IndexManager.insert: appending split leaf failed\n");
+                return ERROR_PFM_WRITEPAGE;
+            }
+            
+            unsigned newPageNum = fileHandle.getNumberOfPages() -1;
+            
+            // set up and write left page
+            splitHeader1.nextPage = newPageNum;
+            splitHeader1.prevPage = oldPrev;
+            
+            setLeafPageHeader(splitPage1, splitHeader1);
+            
+            if(fileHandle.writePage(pageID, splitPage1) != SUCCESS){
+                fprintf(stderr, "IndexManager.insert: write replacement page failed\n");
+                return ERROR_PFM_WRITEPAGE;
+            }
+            
+            //set child pointer to be passed
+            newChildEntry.childPageNumber = newPageNum;
+            
+            //cleanup
+            free(splitPage1);
+            free(splitPage2);
+            free(tempPage);
 			
-
-
 		}       
     }//Do non-leaf insert
     else{
