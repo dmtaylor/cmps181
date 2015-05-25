@@ -495,13 +495,13 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     
     // Do insert on leaf record
     if(isLeaf == LeafPage){
-		cout << "LEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
+		//cout << "LEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
         
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         
         //compute amount of free space and insert if able
         if(PAGE_SIZE - lpHeader.freeSpaceOffset > getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
-			cout << "LEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
+			//cout << "LEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
 			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
 			if(fileHandle.writePage(pageID, pageData) != SUCCESS){
@@ -513,7 +513,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             return 0;
 		}
         else{// otherwise we have to split
-			cout << "LEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
+			//cout << "LEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
 			//leaf page needs to be split
             
             // init aux storage
@@ -628,7 +628,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 		}       
     }//Do non-leaf insert
     else{
-		cout << "NONLEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
+		//cout << "NONLEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
         NonLeafPageHeader nlpHeader = getNonLeafPageHeader(pageData);
         
         unsigned childID = getSonPageID(attribute, key, pageData);
@@ -651,7 +651,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 			
         
         if(PAGE_SIZE - nlpHeader.freeSpaceOffset > getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
-			cout << "NONLEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
+			//cout << "NONLEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
             insertNonLeafRecord(attribute, newChildEntry, pageData);
             if(fileHandle.writePage(pageID, pageData) != SUCCESS){
                 free(pageData);
@@ -664,7 +664,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             return 0;
         }
         else{
-			cout << "NONLEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
+			//cout << "NONLEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
             // initialize the sub pages that will be saved to disk
             void* splitPage1 = calloc(PAGE_SIZE, 1);
             void* splitPage2 = calloc(PAGE_SIZE, 1);
@@ -1035,8 +1035,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 	//Set offset to first valid record inside lowKeyPage
 	while (currRecordNumber < leafPageHeader.recordsNumber){
 		//if lowKey null break
-		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 ||
-			compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) < 0){
+		if ( compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) <= 0){
 			foundFirstRecord = true;
 			break;
 		}		
@@ -1048,7 +1047,7 @@ RC IndexManager::scan(FileHandle &fileHandle,
 
 	//debugging purposes, We shouldn't enter this if-statement
 	if (!foundFirstRecord)
-		fprintf(stderr, "ix.scan(): No valid record on lowKeyPage.");
+		fprintf(stderr, "ix.scan(): No valid record on lowKeyPage.\n"); //TODO
 
 	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator, update offset
 	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 && lowKeyInclusive){
@@ -1158,7 +1157,7 @@ IX_ScanIterator::~IX_ScanIterator()
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 {
 	if(position == keys.size()) 
-		return RBFM_EOF; 
+		return IX_EOF; 
 	else {
 		rid = rids[position]; 
 		memcpy(key, keys[position], sizes[position]);
@@ -1170,10 +1169,31 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key)
 
 RC IX_ScanIterator::close()
 {
-	for(unsigned i = 0; i < keys.size(); ++i){
-      free(keys[i]);
-   }
+/*
+	for(unsigned i = 0; !keys.empty(); ++i){
+		free(keys[i]);
+		rids.pop_back();
+		sizes.pop_back();
+	}
+*/
 
+	for (unsigned i = 0; i < keys.size(); ++i){
+		free(keys[i]);
+	//	rids.pop_back();
+	//	sizes.pop_back();
+	}
+	while(!keys.empty()){
+		keys.pop_back();
+	}
+
+	while(!rids.empty()){
+		rids.pop_back();
+	}
+	while(!sizes.empty()){
+		sizes.pop_back();
+	}
+	position = 0;	
+	
 	return 0;
 }
 
