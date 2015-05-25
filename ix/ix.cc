@@ -470,9 +470,13 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
 RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &rid, FileHandle &fileHandle, unsigned pageID, ChildEntry &newChildEntry)
 {
 	void* pageData = calloc(PAGE_SIZE, 1);
+    if(pageData == NULL){
+        fprintf(stderr, "IndexManager.insert: calloc failed\n");
+        return ERROR_UNKNOWN;
+    }
     
 	if(fileHandle.getFileDescriptor() == NULL){
-		fprintf(stderr, "IndexManager.insert(): unopened file passed to deleteEntry\n");
+		fprintf(stderr, "IndexManager.insert(): unopened file passed to insert.\n");
 		return ERROR_PFM_FILEHANDLE;
 	}
 
@@ -490,7 +494,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
 		cout << "LEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         
-        if(PAGE_SIZE - lpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
+        if(PAGE_SIZE - lpHeader.freeSpaceOffset > getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
 			cout << "LEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
 			//if enough space on leafPage insert record and be done
 			insertLeafRecord(attribute, key, rid, pageData);
@@ -499,8 +503,10 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             }
             //newChildEntry.key = NULL;
 			newChildEntry.isNull = true;
+            free(pageData);
             return 0;
-		} else{
+		}
+        else{
 			cout << "LEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
 			//leaf page needs to be split
             
@@ -608,6 +614,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             newChildEntry.childPageNumber = newPageNum;
             
             //cleanup
+            free(pageData);
             free(splitPage1);
             free(splitPage2);
             free(tempPage);
@@ -631,18 +638,23 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
         if(newChildEntry.key == NULL){
             return 0;
         }*/
-		if (newChildEntry.isNull)
-			return 0;
+		if (newChildEntry.isNull){
+            free(pageData);
+            return 0;
+        }
+			
         
-        if(PAGE_SIZE - nlpHeader.freeSpaceOffset >= getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
+        if(PAGE_SIZE - nlpHeader.freeSpaceOffset > getKeySize(attribute, newChildEntry.key) + sizeof(unsigned)){
 			cout << "NONLEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
             insertNonLeafRecord(attribute, newChildEntry, pageData);
             if(fileHandle.writePage(pageID, pageData) != SUCCESS){
+                free(pageData);
                 return ERROR_PFM_WRITEPAGE;
             }
             
             //newChildEntry.key = NULL; 
 			newChildEntry.isNull = true;
+            free(pageData);
             return 0;
         }
         else{
@@ -652,6 +664,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             void* splitPage2 = calloc(PAGE_SIZE, 1);
             if(splitPage1 == NULL || splitPage2 == NULL){
                 fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+                free(pageData);
                 return ERROR_UNKNOWN;
             }
             NonLeafPageHeader splitHeader;
@@ -661,6 +674,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             void* tempPage = calloc(2*PAGE_SIZE, 1);
             if(tempPage == NULL){
                 fprintf(stderr, "IndexManager.insert: ran out of memory\n");
+                free(pageData);
                 return ERROR_UNKNOWN;
             }
             memcpy(tempPage, pageData, PAGE_SIZE);
@@ -684,6 +698,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 }
                 else{
                     fprintf(stderr, "IndexManager.insert: Invalid attribute type\n");
+                    free(pageData);
                     return ERROR_UNKNOWN;
                 }
             }
@@ -703,7 +718,11 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             
             //handle key to be passed, page num will be later
             unsigned childKeySize = getKeySize(attribute, (char*) tempPage + toSplitOffset);
-            free(newChildEntry.key);
+            
+            if(newChildEntry.key != NULL){
+                free(newChildEntry.key);
+            }
+            
             newChildEntry.key = malloc(childKeySize);
             memcpy(newChildEntry.key, (char*) tempPage + toSplitOffset, childKeySize);
             toSplitOffset += childKeySize;
@@ -721,6 +740,15 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             
             if(fileHandle.appendPage(splitPage2) != SUCCESS){
                 fprintf(stderr, "IndexManager.insert: appending split page failed\n");
+                if(pageData != NULL){
+                    free(pageData);
+                }
+                if(splitPage2 != NULL){
+                    free(splitPage2);
+                }
+                if(tempPage != NULL){
+                    free(tempPage);
+                }
                 return ERROR_PFM_WRITEPAGE;
             }
             free(splitPage2);
@@ -743,6 +771,9 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 insertNonLeafRecord(attribute, newChildEntry, newRoot);
                 if(fileHandle.appendPage(newRoot) != SUCCESS){
                     fprintf(stderr, "IndexManager.insert: appending new root page failed\n");
+                    if(pageData != NULL){
+                        free(pageData);
+                    }
                     return ERROR_PFM_WRITEPAGE;
                 }
                 unsigned newRootNum = fileHandle.getNumberOfPages() -1;
@@ -752,20 +783,32 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 
                 if(fileHandle.readPage(0, newRoot) != SUCCESS){
                     fprintf(stderr, "Indexmanager.insert: cannot read root base page\n");
+                    if(pageData != NULL){
+                        free(pageData);
+                    }
                     return ERROR_PFM_READPAGE;
                 }
                 memcpy(newRoot, &newRootNum, sizeof(unsigned));
                 if(fileHandle.writePage(0, newRoot) != SUCCESS){
                     fprintf(stderr, "Indexmanager.insert: cannot write root base page\n");
+                    if(pageData != NULL){
+                        free(pageData);
+                    }
                     return ERROR_PFM_WRITEPAGE;
                 }
                 
             }
+            if(pageData != NULL){
+                free(pageData);
+            }
+            return 0;
             
         }
         
     }
-    
+    if(pageData != NULL){
+        free(pageData);
+    }
     return 0;
 }
 
@@ -860,6 +903,7 @@ RC IndexManager::deleteEntry(FileHandle &fileHandle, const Attribute &attribute,
         return ERROR_PFM_WRITEPAGE;
     }
     
+    free(leafPageData);
 	return 0;
 }
 
