@@ -382,7 +382,7 @@ RC IndexManager::insertNonLeafRecord(const Attribute &attribute, ChildEntry &new
     
     
     for(unsigned i = 0; i < nonLeafHeader.recordsNumber; ++i){
-        iter_key_size = getKeySize(attribute, (void *)((char*) pageData + offset));
+        iter_key_size = getKeySize(attribute, (char*) pageData + offset);
         iter_key = calloc(iter_key_size, 1);
         memcpy(iter_key, (char*) pageData + offset, iter_key_size);
         
@@ -432,7 +432,7 @@ RC IndexManager::insertLeafRecord(const Attribute &attribute, const void *key, c
     
     //JAKE: changed from "for (...; i < nonLeafHeader.recordsNumber;...){" 
     for(unsigned i = 0; i < leafHeader.recordsNumber; ++i){
-        iter_key_size = getKeySize(attribute, (void *)((char*) pageData + offset));
+        iter_key_size = getKeySize(attribute, (char*) pageData + offset);
         iter_key = calloc(iter_key_size, 1);
         memcpy(iter_key, (char*) pageData + offset, iter_key_size);
         
