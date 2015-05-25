@@ -43,7 +43,7 @@ Dated 2015-5-24
 
 For project 3 we ran into less problems than project 2, but there were
 still some issues. Our design follows Paolo's base design, with the necessary functions
-implemented. The IndexManager module allows for a B-tree index for given
+implemented. The IndexManager module allows for a B+tree index for given
 keys and RIDs, using the paged file system from project 1. The data structure
 design is straight from the textbook, and implementation specifics were provided
 by Paolo. For further details, please see report3.txt.
@@ -57,3 +57,9 @@ will fail. Other than that, everything should work smoothly.
 
 Our code is a little long, so if there are any questions please direct any questions
 to us via email (ucsc_id@ucsc.edu).
+
+Joke(3): 
+Q: how many programmers does it take to change a light bulb?
+
+A: none, that's a hardware problem
+
