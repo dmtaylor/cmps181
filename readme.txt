@@ -1,7 +1,7 @@
 CMPS 181 project
 ================
 
-Current iteration: 2
+Current iteration: 3
 
 By: David Taylor (damtaylo)
     Jake Zidow (jrzidow)
@@ -36,3 +36,14 @@ just ignore them.
 Joke(2): A SQL query goes into a bar, walks up to two tables and asks, "Can I join you?"
 
 
+Project 3 Notes
+---------------
+
+Dated 2015-5-24
+
+For project 3 we ran into less problems than project 2, but there were
+still some issues. Our design follows Paolo's base design, with the necessary functions
+implemented. The IndexManager module allows for a B-tree index for given
+keys and RIDs, using the paged file system from project 1. The data structure
+design is straight from the textbook, and implementation specifics were provided
+by Paolo.
