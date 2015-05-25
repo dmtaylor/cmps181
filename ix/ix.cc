@@ -247,18 +247,22 @@ unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key,
 		
 		if (varCharFlag){
 			memcpy(&size, (char *)pageData + offset, VARCHAR_LENGTH_SIZE);
-			memcpy(&indexKey, (char *)pageData + offset + VARCHAR_LENGTH_SIZE, size);
-			size += VARCHAR_LENGTH_SIZE; //so 'size' refers to entire sizeof current indexKey
+            size += VARCHAR_LENGTH_SIZE; //so 'size' refers to entire sizeof current indexKey
+            indexKey = calloc(size, 1);
+			memcpy(indexKey, (char *)pageData + offset, size;
 		} else{
-			memcpy(&indexKey, (char *)pageData + offset, size);
+            indexKey = calloc(INT_SIZE, 1);
+			memcpy(indexKey, (char *)pageData + offset, size);
 		}
 
 		if (compareKeys(attribute, key, indexKey) < 0 ){
+            free(indexKey);
 			break;
 		}else{
 			//offset += size;
 			memcpy(&sonID, (char *)pageData + offset + size, sizeof(uint32_t) );
 			offset += size + sizeof(uint32_t);
+            free(indexKey);
 		}
 	}
 
