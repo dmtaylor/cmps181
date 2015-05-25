@@ -719,6 +719,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             fileHandle.writePage(pageID, splitPage1);
             
             free(splitPage1);
+            splitPage1 = NULL;
             
             //handle key to be passed, page num will be later
             unsigned childKeySize = getKeySize(attribute, (char*) tempPage + toSplitOffset);
@@ -819,6 +820,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             }
             if(pageData != NULL){
                 free(pageData);
+                pageData = NULL;
             }
             return 0;
             
