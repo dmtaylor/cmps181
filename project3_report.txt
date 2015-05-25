@@ -4,6 +4,13 @@ Project 3 Report
 By: David Taylor (damtaylo)
     Jake Zidow (jrzidow)
     
+Summary
+-------
+
+All test cases pass if there exists no index files in the current working
+directory. We have a  segmentation fault when running extra_test_case3 so please
+comment out extra credit tests before running tests.         
+    
 Requirements
 ------------
 
