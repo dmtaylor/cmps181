@@ -249,7 +249,7 @@ unsigned IndexManager::getSonPageID(const Attribute attribute, const void * key,
 			memcpy(&size, (char *)pageData + offset, VARCHAR_LENGTH_SIZE);
             size += VARCHAR_LENGTH_SIZE; //so 'size' refers to entire sizeof current indexKey
             indexKey = calloc(size, 1);
-			memcpy(indexKey, (char *)pageData + offset, size;
+			memcpy(indexKey, (char *)pageData + offset, size);
 		} else{
             indexKey = calloc(INT_SIZE, 1);
 			memcpy(indexKey, (char *)pageData + offset, size);
@@ -831,9 +831,11 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
         }
         
     }
+/*
     if(pageData != NULL){
         free(pageData);
     }
+*/
     return 0;
 }
 
