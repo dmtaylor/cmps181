@@ -1050,8 +1050,9 @@ RC IndexManager::scan(FileHandle &fileHandle,
 		fprintf(stderr, "ix.scan(): No valid record on lowKeyPage.\n"); //TODO
 
 	//if first valid key == lowKey and lowKeyInclusive == true, push record into scan iterator, update offset
-	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 && lowKeyInclusive){
-		pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
+	if (compareKeys(attribute, lowKey, (void *)((char*)pageData + offset)) == 0 /*&& lowKeyInclusive*/){
+		if(lowKeyInclusive)
+			pushBackRecord((void *)((char *)pageData + offset), attribute, ix_ScanIterator);
 
 		recordSize = sizeof(RID) + getKeySize( attribute, (void *)((char*)pageData + offset) );
 		offset +=recordSize;
