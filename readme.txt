@@ -46,4 +46,14 @@ still some issues. Our design follows Paolo's base design, with the necessary fu
 implemented. The IndexManager module allows for a B-tree index for given
 keys and RIDs, using the paged file system from project 1. The data structure
 design is straight from the textbook, and implementation specifics were provided
-by Paolo.
+by Paolo. For further details, please see report3.txt.
+
+In the tests, a segmentation fault occurs in the extra credit cases. We have declined
+to pursue these points, so the extra credit cases must be commented out (these have been
+done in our code). Furthermore, our tests must be run from a blank slate, i.e. no
+test index files in the current directory, for all of the grading tests to pass.
+If any of the index files already exist when the tests are run, our creation tests
+will fail. Other than that, everything should work smoothly.
+
+Our code is a little long, so if there are any questions please direct any questions
+to us via email (ucsc_id@ucsc.edu).
