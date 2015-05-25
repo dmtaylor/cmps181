@@ -286,7 +286,7 @@ RC IndexManager::createFile(const string &fileName)
 	void * pageData = calloc(PAGE_SIZE, 1);
     
     uint32_t rootPageNum = 1;
-    memcpy(pageData, &rootPageNum, INT_SIZE);
+    memcpy(pageData, &rootPageNum, sizeof(uint32_t));
     
     // append the first page to the file
     if(newFileH.appendPage(pageData) != SUCCESS){
@@ -294,7 +294,7 @@ RC IndexManager::createFile(const string &fileName)
         return ERROR_PFM_WRITEPAGE;
     }
     //reset mem ptr for reuse
-    memset(pageData, 0, INT_SIZE);
+    memset(pageData, 0, sizeof(uint32_t));
     
     //Now, do first root page
     setPageType(pageData, NonLeafPage);
@@ -492,8 +492,10 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
     // Do insert on leaf record
     if(isLeaf == LeafPage){
 		cout << "LEAF CHECKPOINT 1: ix.insert() pageID = "<< pageID << endl;
+        
         LeafPageHeader lpHeader = getLeafPageHeader(pageData);
         
+        //compute amount of free space and insert if able
         if(PAGE_SIZE - lpHeader.freeSpaceOffset > getKeySize(attribute, newChildEntry.key)+ sizeof(RID)){
 			cout << "LEAF CHECKPOINT 2: ix.insert() pageID = "<< pageID << endl;
 			//if enough space on leafPage insert record and be done
@@ -506,7 +508,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             free(pageData);
             return 0;
 		}
-        else{
+        else{// otherwise we have to split
 			cout << "LEAF CHECKPOINT 3: ix.insert() pageID = "<< pageID << endl;
 			//leaf page needs to be split
             
@@ -523,7 +525,7 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             setPageType(splitPage2, LeafPage);
             
             // set up merged doublepage
-			void* tempPage = calloc(2*PAGE_SIZE, 1);
+			void* tempPage = calloc(2*PAGE_SIZE +1, 1);
             if(tempPage == NULL){
                 fprintf(stderr, "IndexManager.insert: ran out of memory\n");
                 return ERROR_UNKNOWN;
@@ -671,10 +673,12 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             setPageType(splitPage1, NonLeafPage);
             setPageType(splitPage2, NonLeafPage);
             
-            void* tempPage = calloc(2*PAGE_SIZE, 1);
+            void* tempPage = calloc(2*PAGE_SIZE+1, 1);
             if(tempPage == NULL){
                 fprintf(stderr, "IndexManager.insert: ran out of memory\n");
                 free(pageData);
+                free(splitPage1);
+                free(splitPage2);
                 return ERROR_UNKNOWN;
             }
             memcpy(tempPage, pageData, PAGE_SIZE);
@@ -721,9 +725,15 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             
             if(newChildEntry.key != NULL){
                 free(newChildEntry.key);
+                newChildEntry.key = NULL;
             }
             
             newChildEntry.key = malloc(childKeySize);
+            if(newChildEntry.key == NULL){
+                fprintf(stderr, "IndaeManager.insert: allocing new entry to pass up failed\n");
+                return ERROR_UNKNOWN;
+            }
+            
             memcpy(newChildEntry.key, (char*) tempPage + toSplitOffset, childKeySize);
             toSplitOffset += childKeySize;
             newChildEntry.isNull = false;
@@ -761,6 +771,10 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
             if(pageID == getRootPageID(fileHandle)){
 				cout << "ROOT SPLITTING"<< endl;
                 void* newRoot = calloc(PAGE_SIZE, 1);
+                if(newRoot == NULL){
+                    fprintf(stderr, "IndexManager.insert: new root malloc failed\n");
+                    return ERROR_UNKNOWN;
+                }
                 setPageType(newRoot, NonLeafPage);
                 splitHeader.recordsNumber = 0;
                 splitHeader.freeSpaceOffset = sizeof(PageType) + sizeof(NonLeafPageHeader) + sizeof(unsigned);
@@ -773,7 +787,9 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                     fprintf(stderr, "IndexManager.insert: appending new root page failed\n");
                     if(pageData != NULL){
                         free(pageData);
+                        pageData = NULL;
                     }
+                    free(newRoot);
                     return ERROR_PFM_WRITEPAGE;
                 }
                 unsigned newRootNum = fileHandle.getNumberOfPages() -1;
@@ -782,9 +798,10 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                 // it now will point to page 0 containing the root number
                 
                 if(fileHandle.readPage(0, newRoot) != SUCCESS){
-                    fprintf(stderr, "Indexmanager.insert: cannot read root base page\n");
+                    fprintf(stderr, "IndexManager.insert: cannot read root base page\n");
                     if(pageData != NULL){
                         free(pageData);
+                        pageData = NULL;
                     }
                     return ERROR_PFM_READPAGE;
                 }
@@ -796,6 +813,8 @@ RC IndexManager::insert(const Attribute &attribute, const void *key, const RID &
                     }
                     return ERROR_PFM_WRITEPAGE;
                 }
+                
+                free(newRoot);
                 
             }
             if(pageData != NULL){
