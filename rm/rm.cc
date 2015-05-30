@@ -499,33 +499,39 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 		return 1;		
 	}
 
+	FileHandle indexFileHandle;
 	RID indicesRID;
-	void * IndicesTuple;
+	void * indicesTuple;
 	void * keyAttributeName;
 	void * keyAttributeValue;
 	void * indexFileName;
 	unsigned i;
 	
 	//For each index
-	while (scanIterator.getNextTuple(&indicesRID, indicesTuple) != RBFM_EOF){
+	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
 		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
 		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
-		//open IndexFile w/ filename we just read
-
 		for(i = 0; i < recordDescriptor.size(); ++i){
-			if(recordDescriptor[i].name == (string)keyAttributeName){
-				_rm->readAttribute(tableName, rid, (string)keyAttributeName, keyAttributeValue);
+			if(recordDescriptor[i].name == (char*)keyAttributeName){
+				_rm->readAttribute(tableName, rid, (char*)keyAttributeName, keyAttributeValue);
 				break;
 			}
 		}
-		
-		//insert into indexfile		
+		//open IndexFile w/ filename we just read		
+		_ix->openFile((char*)indexFileName, indexFileHandle);
 
+		//insert into indexfile		
+		_ix->insertEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
+
+		_ix->closeFile(indexFileHandle);
 	}
+
+
 
 	return result;
 }
+//RC ix.insertEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
 /*RC scan(const string &tableName,
       const string &conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
@@ -536,8 +542,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 RC RelationManager::getIndices(const string& tableName, RM_ScanIterator& scanIterator){
 
 	//get tableID to search for indices on that table	
-	unsigned tableID;
-	if (getTableID(tableName, &tableID) != SUCCESS)
+	int tableID;
+	if (getTableID(tableName, tableID) != SUCCESS)
 		return 1;
 	
 	//open indices file and scan for entries w/ tableID from last comment	

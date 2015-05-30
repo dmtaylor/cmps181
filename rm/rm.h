@@ -165,7 +165,7 @@ private:
   // Auxiliary methods.
 
   RC getTableID(const string &tableName, int &tableID);
-  RC getIndices(const string& tableName, RM_ScanIterator& scanIterator)
+  RC getIndices(const string& tableName, RM_ScanIterator& scanIterator);
 
   static vector<Attribute> getTablesRecordDescriptor();
   static vector<Attribute> getColumnsRecordDescriptor();
