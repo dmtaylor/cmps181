@@ -214,9 +214,27 @@ vector<Attribute> RelationManager::getIndicesRecordDescriptor(){
 	
 }
 
-void RelationManager::prepareIndicesRecordData(int tableID, string tableName, Attribute attr, void * outputData){
-	//TODO:
+void RelationManager::prepareIndicesRecordData(int tableID, string fileName, Attribute attr, void * outputData){
+	
+	string attrName = attr.name;
+	unsigned offset = 0, attrName_length = (unsigned)attrName.length();
 
+	//table id
+	memcpy((char*) outputData + offset, &tableID, INT_SIZE);
+	offset +=INT_SIZE;
+
+	//AttrName
+	memcpy ((char*) outputData + offset, &attrName_length, VARCHAR_LENGTH_SIZE);
+	offset += VARCHAR_LENGTH_SIZE;
+	memcpy ((char*) outputData + offset, attrName.c_str(), attrName_length);
+	offset += attrName_length;
+
+	//fileName
+	unsigned fileName_length = (unsigned)fileName.length();
+	memcpy ((char*) outputData + offset, &fileName_length, VARCHAR_LENGTH_SIZE);
+	offset += VARCHAR_LENGTH_SIZE;
+	memcpy ((char*) outputData + offset, fileName.c_str(), fileName_length);
+	offset += fileName_length;
 }
 
 // Prepares the outputData argument according to the "Tables" record descriptor.
