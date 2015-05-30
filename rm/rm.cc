@@ -32,6 +32,7 @@ RelationManager::RelationManager()
 	// Initialize defines (should be static, but this workaround is needed to be compatible with the weird test bench initialization).
 	t_tables = TABLES_TABLE_NAME;
 	t_columns = COLUMNS_TABLE_NAME;
+	t_indices = INDICES_TABLE_NAME;
 
 	_rbfm = RecordBasedFileManager::instance();
 
@@ -43,13 +44,13 @@ RelationManager::RelationManager()
 		// since they are structures needed within this methods. Instead, here we use RBFM-level methods.
 
 		// Create the catalog files.
-		if (_rbfm->createFile(t_tables+TABLE_FILE_EXTENSION) != SUCCESS || _rbfm->createFile(t_columns+TABLE_FILE_EXTENSION) != SUCCESS)
+		if (_rbfm->createFile(t_tables+TABLE_FILE_EXTENSION) != SUCCESS || _rbfm->createFile(t_columns+TABLE_FILE_EXTENSION) != SUCCESS ||_rbfm->createFile(t_indices+TABLE_FILE_EXTENSION) != SUCCESS)
 		{
 			perror ("Unable to create catalog files.");
 			exit(1);
 		}
 
-		// Creates and adds the "Tables" entries for "Tables" and "Columns".
+		// Creates and adds the "Tables" entries for "Tables" and "Columns" AND "INDICES".
 		FileHandle fileHandle;
 		RID rid;
 		_rbfm->openFile(t_tables+TABLE_FILE_EXTENSION, fileHandle);
@@ -62,6 +63,11 @@ RelationManager::RelationManager()
 		prepareTablesRecordData(COLUMNS_TABLE_ID, t_columns, tablesRecordData);
 		_rbfm->insertRecord(fileHandle, tablesAttrs, tablesRecordData, rid);
 
+		//add index-table to Tables-table
+		prepareTablesRecordData(INDICES_TABLE_ID, t_indices, tablesRecordData);
+		_rbfm->insertRecord(fileHandle, tablesAttrs, tablesRecordData, rid);
+
+
 		_rbfm->closeFile(fileHandle);
 		free(tablesRecordData);
 
@@ -70,6 +76,8 @@ RelationManager::RelationManager()
 
 		vector<Attribute> columnsAttrs = getColumnsRecordDescriptor();
 		void * columnsRecordData = malloc(COLUMNS_RECORD_DATA_SIZE);
+
+		vector<Attribute> indicesAttrs = getIndicesRecordDescriptor();
 
 		for (unsigned i = 0; i < (unsigned) tablesAttrs.size(); i++)
 		{
@@ -80,6 +88,13 @@ RelationManager::RelationManager()
 		for (unsigned i = 0; i < (unsigned) columnsAttrs.size(); i++)
 		{
 			prepareColumnsRecordData(COLUMNS_TABLE_ID, columnsAttrs[i], columnsRecordData);
+			_rbfm->insertRecord(fileHandle, columnsAttrs, columnsRecordData, rid);
+		}
+
+		//add index-table to Columns-table
+		for (unsigned i = 0; i < (unsigned) indicesAttrs.size(); i++)
+		{
+			prepareColumnsRecordData(INDICES_TABLE_ID, indicesAttrs[i], columnsRecordData);
 			_rbfm->insertRecord(fileHandle, columnsAttrs, columnsRecordData, rid);
 		}
 
@@ -174,6 +189,34 @@ vector<Attribute> RelationManager::getColumnsRecordDescriptor()
 	columns_attrs.push_back(attr);
 
 	return columns_attrs;
+}
+
+vector<Attribute> RelationManager::getIndicesRecordDescriptor(){
+	vector<Attribute> indices_attrs;
+
+	Attribute attr;
+	attr.name = INDICES_COL_TABLE_ID;
+	attr.type = TypeInt;
+	attr.length = (AttrLength)INT_SIZE;
+	indices_attrs.push_back(attr);
+
+	attr.name = INDICES_COL_ATTR_NAME;
+	attr.type = TypeVarChar;
+	attr.length = (AttrLength)INDICES_COL_ATTR_NAME_SIZE;
+	indices_attrs.push_back(attr);
+
+	attr.name = INDICES_COL_FILE_NAME;
+	attr.type = TypeVarChar;
+	attr.length = (AttrLength)INDICES_COL_FILE_NAME_SIZE;
+	indices_attrs.push_back(attr);
+
+	return indices_attrs;
+	
+}
+
+void RelationManager::prepareIndicesRecordData(int tableID, string tableName, Attribute attr, void * outputData){
+	//TODO:
+
 }
 
 // Prepares the outputData argument according to the "Tables" record descriptor.

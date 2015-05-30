@@ -39,6 +39,16 @@ using namespace std;
 
 #define COLUMNS_RECORD_DATA_SIZE			INT_SIZE * 3 + COLUMNS_COL_COLUMN_NAME_SIZE
 
+#define INDICES_TABLE_NAME					"Indices"
+#define INDICES_TABLE_ID					3
+
+#define INDICES_COL_TABLE_ID				"table-id"
+#define INDICES_COL_ATTR_NAME				"attribute-name"
+#define INDICES_COL_ATTR_NAME_SIZE			40
+#define INDICES_COL_FILE_NAME				"file-name"
+#define INDICES_COL_FILE_NAME_SIZE			40
+
+#define INDICES_RECORD_DATA_SIZE			INT_SIZE + INDICES_COL_ATTR_NAME_SIZE + INDICES_COL_FILE_NAME_SIZE
 
 #define RM_EOF (-1)  // end of a scan operator
 
@@ -119,6 +129,7 @@ private:
   // Defines.
   string t_tables;
   string t_columns;
+  string t_indices; 
 
   // Auxiliary methods.
 
@@ -126,9 +137,11 @@ private:
 
   static vector<Attribute> getTablesRecordDescriptor();
   static vector<Attribute> getColumnsRecordDescriptor();
+  static vector<Attribute> getIndicesRecordDescriptor();
 
   static void prepareTablesRecordData(int id, string tableName, void * outputData);
   static void prepareColumnsRecordData(int tableID, Attribute attr, void * outputData);
+  static void prepareIndicesRecordData(int tableID, string tableName, Attribute attr, void * outputData);
 
 };
 
