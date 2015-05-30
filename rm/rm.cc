@@ -35,6 +35,7 @@ RelationManager::RelationManager()
 	t_indices = INDICES_TABLE_NAME;
 
 	_rbfm = RecordBasedFileManager::instance();
+    _ix = IndexManager::instance();
 
 	// If a catalog does not exist yet, create it.
 	int tableID;
@@ -659,4 +660,61 @@ RC RelationManager::addAttribute(const string &tableName, const Attribute &attr)
 RC RelationManager::reorganizeTable(const string &tableName)
 {
     return -1;
+}
+
+//Index Functions
+
+RC createIndex(const string &tableName, const string &attributeName){
+    //TODO
+    string indexFileName = tableName + string("_") + attributeName + INDEX_FILE_EXTENSION;
+    
+    if(_ix->createFile(indexFileName) != SUCCESS){
+        fprintf(stderr, "RelationManager.createIndex: index create failed\n");
+        return 1;
+    }
+    FileHandle indexHandle;
+    if(_ix->openFile(indexFileName, indexHandle) != SUCCESS){
+        return 1;
+    }
+    
+    //TODO: insert index file into catalog here
+    int tableId;
+    
+    if(getTableID(tableName, tableId) != SUCCESS){
+        return 1;
+    }
+    
+    
+    
+    //TODO: insert all entries into newly created index here
+    
+    vector<string> indexAttr;
+    indexAttr.push_back(attributeName);
+    
+    RM_ScanIterator rm_scanIterator;
+    
+    
+    
+    return 0;
+}
+
+RC destroyIndex(const string &tableName, const string &attributeName){
+    //TODO
+    
+    
+    return 0;
+}
+
+RC indexScan(const string &tableName,
+        const string &attributeName,
+        const void* lowKey,
+        const void* highKey,
+        bool lowKeyInclusive,
+        bool highKeyInclusive,
+        RM_IndexScanIterator &rm_IndexScanIterator)
+{
+    //TODO
+    
+    
+    return 0;
 }

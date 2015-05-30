@@ -11,9 +11,12 @@
 
 #include "../rbf/rbfm.h"
 
+#include "../ix/ix.h"
+
 using namespace std;
 
 #define TABLE_FILE_EXTENSION				".t"
+#define INDEX_FILE_EXTENSION                ".ix"
 
 
 #define TABLES_TABLE_NAME					"Tables"
@@ -71,6 +74,17 @@ private:
   RBFM_ScanIterator rbfm_SI;
 };
 
+class RM_IndexScanIterator {
+public:
+    RM_IndexScanIterator();
+    ~RM_IndexScanIterator();
+    
+    RC getNextEntry(RID &rid, void* key);
+    
+    RC close();
+    
+};
+
 
 // Relation Manager
 class RelationManager
@@ -106,6 +120,22 @@ public:
       const void *value,                    // used in the comparison
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator);
+  
+  // Index modifications for project 4
+  RC createIndex(const string &tableName, const string &attributeName);
+  
+  RC destroyIndex(const string &tableName, const string &attributeName);
+  
+  RC indexScan(const string &tableName,
+      const string &attributeName,
+      const void* lowKey,
+      const void* highKey,
+      bool lowKeyInclusive,
+      bool highKeyInclusive,
+      RM_IndexScanIterator &rm_IndexScanIterator
+  );
+  
+  
 
 
 // Extra credit
@@ -125,6 +155,7 @@ protected:
 private:
   static RelationManager *_rm;
   static RecordBasedFileManager *_rbfm;
+  static IndexManager* _ix;
 
   // Defines.
   string t_tables;
