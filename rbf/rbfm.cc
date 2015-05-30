@@ -1,28 +1,19 @@
-/*
- * rbfm.cc:	The implementation file for the relation based file
- * 			manager module.
- *
- * By:  	David Taylor
- *      	Jake Zidow
- *
- * Starter code provided by Paolo Di Febbo, Shel Finkelstein
- *
- * CMPS181 Spring 2015
- *
- * */
-
-// CMPS 181 - Project 1
+// CMPS 181 - Project 2
 // Author:				Paolo Di Febbo
 // File description:	Implementing the "Variable length records" page structure
-//						(ref. p. 329 Ramakrishnan, Gehrke).
+//						(ref. p. 329 Ramakrishnan - Gehrke, with some modifications).
+
+// For project 4 we used Paolo's provided solution
+// David Taylor, Jake Zidow
+
 
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdexcept>
 #include <stdio.h>
+#include <algorithm>
 
 #include "rbfm.h"
 
@@ -52,7 +43,7 @@ RecordBasedFileManager::~RecordBasedFileManager()
 {
 }
 
-// Configures a new record based page, and puts it in "page".
+// Configures a new record based page, and puts it in the "page" argument.
 void RecordBasedFileManager::newRecordBasedPage(void * page)
 {
 	// Writes the slot directory header.
@@ -64,11 +55,9 @@ void RecordBasedFileManager::newRecordBasedPage(void * page)
 
 RC RecordBasedFileManager::createFile(const string &fileName) {
     // Creating a new paged file.
-	fprintf(stderr, "rbfm.createFile() creating '%s'\n", fileName.c_str());
-	if (_pf_manager->createFile(fileName.c_str()) != SUCCESS){
-		fprintf(stderr, "rbfm.createFile(): PFM.createFile() FAILED");
+	if (_pf_manager->createFile(fileName.c_str()) != SUCCESS)
 		return 1;
-	}
+
 	// Setting up the first page.
 	void * firstPageData = malloc(PAGE_SIZE);
 	newRecordBasedPage(firstPageData);
@@ -80,7 +69,7 @@ RC RecordBasedFileManager::createFile(const string &fileName) {
 	_pf_manager->closeFile(handle);
 
 	free(firstPageData);
-	fprintf(stderr, "rbfm.createFile() '%s' SUCCESFULLY CREATED (AND CLOSED)\n", fileName.c_str());
+
 	return 0;
 }
 
@@ -89,7 +78,6 @@ RC RecordBasedFileManager::destroyFile(const string &fileName) {
 }
 
 RC RecordBasedFileManager::openFile(const string &fileName, FileHandle &fileHandle) {
-	fprintf(stderr, "rbfm.cc: openFile() fileName = %s\n", fileName.c_str());
 	return _pf_manager->openFile(fileName.c_str(), fileHandle);
 }
 
@@ -160,7 +148,7 @@ unsigned RecordBasedFileManager::getRecordSize(const vector<Attribute> &recordDe
 				// We have to get the size of the VarChar field by reading the integer that precedes the string value itself.
 				memcpy(&varcharSize, (char*) data + size, VARCHAR_LENGTH_SIZE);
 				// We also have to account for the overhead given by that integer.
-				size += INT_SIZE + varcharSize;
+				size += VARCHAR_LENGTH_SIZE + varcharSize;
 			break;
 		}
 
@@ -190,41 +178,56 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
 
 	if(!pageFound)
 	{
-		// If we are here, there are no pages with enough space.
-		// TODO (Project 2?): implementing the reorganizePage method and try to squeeze the records to get enough space
-		// In this case, we just create a new white page.
+		// If we are here, there are no pages with enough space. In this case, we just create a new white page.
+		// N.B.: In this case we will need to append it (see code near the end of the method).
 		newRecordBasedPage(pageData);
 	}
 
 	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
 
-	// Setting the return RID.
+	// Return RID: setting the page number.
 	rid.pageNum = i;
-	rid.slotNum = slotHeader.recordEntriesNumber;
 
-	// Adding the new record reference in the slot directory.
+	// Return RID: slot used is the first one empty ("Dead" = record was deleted), or a new one.
+	SlotDirectoryRecordEntry currentEntry;
+	bool foundDeadRecordEntry = false;
+	unsigned k;
+	for (k = 0; k < slotHeader.recordEntriesNumber; k++)
+	{
+		currentEntry = getSlotDirectoryRecordEntry(pageData, k);
+		if (currentEntry.recordEntryType == Dead)
+		{
+			foundDeadRecordEntry = true;
+			break;
+		}
+	}
+	rid.slotNum = k;
+
+	// Adding the new record entry in the slot directory.
 	SlotDirectoryRecordEntry newRecordEntry;
-	newRecordEntry.status = Active;
-	newRecordEntry.entry.length = recordSize;
-	newRecordEntry.entry.offset = slotHeader.freeSpaceOffset - recordSize;
+	newRecordEntry.recordEntryType = Alive;
+	newRecordEntry.length = recordSize;
+	newRecordEntry.offset = slotHeader.freeSpaceOffset - recordSize;
 	setSlotDirectoryRecordEntry(pageData, rid.slotNum, newRecordEntry);
 
 	// Updating the slot directory header.
-	slotHeader.freeSpaceOffset = newRecordEntry.entry.offset;
-	slotHeader.recordEntriesNumber += 1;
+	slotHeader.freeSpaceOffset = newRecordEntry.offset;
+	if (!foundDeadRecordEntry)
+		slotHeader.recordEntriesNumber += 1;
 	setSlotDirectoryHeader(pageData, slotHeader);
 
 	// Adding the record data.
-	memcpy	(((char*) pageData + newRecordEntry.entry.offset), data, recordSize);
+	memcpy	(((char*) pageData + newRecordEntry.offset), data, recordSize);
 
 	// Writing the page to disk.
 	if (pageFound)
 	{
-		if (fileHandle.writePage(i, pageData) != SUCCESS)
+		if (fileHandle.writePage(rid.pageNum, pageData) != SUCCESS)
 			return 2;
 	}
 	else
 	{
+		// In this case (page with enough space not found), we need to append the new one.
 		if (fileHandle.appendPage(pageData) != SUCCESS)
 			return 3;
 	}
@@ -242,34 +245,37 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
 	// Checks if the specific slot id exists in the page.
 	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
-	if(slotHeader.recordEntriesNumber < rid.slotNum)
+	if(slotHeader.recordEntriesNumber <= rid.slotNum)
 		return 2;
 
 	// Gets the slot directory record entry data.
 	SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
 
-	if(recordEntry.status == Active){
-		// Retrieve the actual entry data.
-		memcpy	((char*) data, ((char*) pageData + recordEntry.entry.offset), recordEntry.entry.length);
-	}
-	else if(recordEntry.status == Inactive){
-		// This is the case if the record is deleted
-		fprintf(stderr, "rbfm.cc: RecordBasedFileManager.readRecord: Record in %d : %d has been deleted\n",
-			rid.pageNum, rid.slotNum);
-		return 3;
-	}
-	else if(recordEntry.status == Redirect){
-		// If the record has been moved, recursively read it
-		readRecord(fileHandle, recordDescriptor, recordEntry.redirectRid, data);
-	}
-	else{
-		// If none of these things are true, the directory entry is malformed
-		fprintf(stderr, "rbfm.cc: RecordBasedFileManager.readRecord: Dir entry is malformed\n");
-		return 4;
+	switch (recordEntry.recordEntryType)
+	{
+		// Checks if the given RID is dead. If so, error.
+		case Dead:
+			free(pageData);
+			return 3;
+		break;
+
+		// Checks if the given RID is a tombstone. If so, starts a new recursive read to the linked RID.
+		case Tombstone:
+			free(pageData);
+			return readRecord(fileHandle, recordDescriptor, recordEntry.tombStoneRID, data);
+		break;
+
+		case Alive:
+			// Retrieve the actual entry data.
+			memcpy	((char*) data, ((char*) pageData + recordEntry.offset), recordEntry.length);
+
+			free(pageData);
+			return 0;
+		break;
 	}
 
-	free(pageData);
-	return 0;
+	// We should never be here.
+	return 4;
 }
 
 RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor, const void *data) {
@@ -288,13 +294,13 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
 				memcpy(&data_integer, ((char*) data + offset), INT_SIZE);
 				offset += INT_SIZE;
 
-				cout << "Attribute " << i << " (integer): " << data_integer << endl;
+				cout << "Attribute " << recordDescriptor[i].name << " (integer): " << data_integer << endl;
 			break;
 			case TypeReal:
 				memcpy(&data_real, ((char*) data + offset), REAL_SIZE);
 				offset += REAL_SIZE;
 
-				cout << "Attribute " << i << " (real): " << data_real << endl;
+				cout << "Attribute " << recordDescriptor[i].name << " (real): " << data_real << endl;
 			break;
 			case TypeVarChar:
 				// First VARCHAR_LENGTH_SIZE bytes describe the varchar length.
@@ -308,7 +314,7 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
 				stringData[stringLength] = '\0';
 				offset += stringLength;
 
-				cout << "Attribute " << i << " (string): " << stringData << endl;
+				cout << "Attribute " << recordDescriptor[i].name << " (string): " << stringData << endl;
 				free(stringData);
 			break;
 		}
@@ -316,92 +322,94 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
 	return 0;
 }
 
-// Deletes all records in the file by marking each page as empty
-RC RecordBasedFileManager::deleteRecords(FileHandle &fileHandle){
-	unsigned num_pages = fileHandle.getNumberOfPages();
-	// int i;
-	void * pageData = malloc(PAGE_SIZE);
-	newRecordBasedPage(pageData);
-	for(unsigned i = 0; i<num_pages; i++){
-		if(fileHandle.writePage(i, pageData) != SUCCESS){
+RC RecordBasedFileManager::deleteRecords(FileHandle &fileHandle)
+{
+	// Brutal approach: reset every page with a new "white" one.
+
+	void * page = malloc(PAGE_SIZE);
+
+	unsigned i;
+	for (i = 0; i < fileHandle.getNumberOfPages(); i++)
+	{
+		if (fileHandle.readPage(i, page) != SUCCESS)
 			return 1;
-		}
+
+		newRecordBasedPage(page);
+
+		if (fileHandle.writePage(i, page) != SUCCESS)
+			return 2;
 	}
 
+	free(page);
 	return 0;
 }
 
-// Deletes the record with the given RID
-RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid){
+RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid)
+{
 	// Retrieve the specific page.
 	void * pageData = malloc(PAGE_SIZE);
-	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS){
+	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS)
 		return 1;
-	}
 
 	// Checks if the specific slot id exists in the page.
 	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
-	if(slotHeader.recordEntriesNumber < rid.slotNum){
+	if(slotHeader.recordEntriesNumber <= rid.slotNum)
 		return 2;
-	}
 
-	SlotDirectoryRecordEntry entryToUpdate = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
-	entryToUpdate.status = Inactive;
-	setSlotDirectoryRecordEntry(pageData, rid.slotNum, entryToUpdate);
+	// TODO: To be more efficient, here some recursive Tombstone deletion should be added.
 
-	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
-		return 1;
-	}
+	// Overwrites the specific record entry with a "Dead" one.
+	SlotDirectoryRecordEntry deadRecordEntry;
+	deadRecordEntry.recordEntryType = Dead;
+	setSlotDirectoryRecordEntry(pageData, rid.slotNum, deadRecordEntry);
+
+	// Writeback.
+	if (fileHandle.writePage(rid.pageNum, pageData) != SUCCESS)
+		return 4;
 
 	free(pageData);
-
 	return 0;
 }
 
-// updates the record at specified RID
-// Does this by inserting the updated data, and replacing the directory
-// entry with the redirect RID
-RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid){
+RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, const RID &rid)
+{
+	// Aggressive approach: update = delete + insert [+ tombstone link]
+	// NB: In a real reliable system, this method should be a transaction. If something goes wrong within it, I should recover everything back as it was before the call.
+
+	if (deleteRecord(fileHandle, recordDescriptor, rid) != SUCCESS)
+		return 1;
+
 	RID newRid;
-	SlotDirectoryRecordEntry redirectEntry;
-
-	void * pageData = malloc(PAGE_SIZE);
-	if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS){
-		return 1;
-	}
-
-	// Checks if the specific slot id exists in the page.
-	SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
-	if(slotHeader.recordEntriesNumber < rid.slotNum){
+	if (insertRecord(fileHandle, recordDescriptor, data, newRid) != SUCCESS)
 		return 2;
+
+	// If the new rid is different, I put a tombstone on the original record entry linking to it.
+	if (newRid != rid)
+	{
+		// Retrieve the specific page.
+		void * pageData = malloc(PAGE_SIZE);
+		if (fileHandle.readPage(rid.pageNum, pageData) != SUCCESS)
+			return 3;
+
+		// Puts the tombstone.
+		SlotDirectoryRecordEntry tombstoneRecordEntry;
+		tombstoneRecordEntry.recordEntryType = Tombstone;
+		tombstoneRecordEntry.tombStoneRID = newRid;
+		setSlotDirectoryRecordEntry(pageData, rid.slotNum, tombstoneRecordEntry);
+
+		// Writeback.
+		if (fileHandle.writePage(rid.pageNum, pageData) != SUCCESS)
+			return 4;
+
+		free(pageData);
 	}
-
-	// Insert the updated value and get the new RID
-	if(insertRecord(fileHandle, recordDescriptor, data, newRid) != SUCCESS){
-		return 1;
-	}
-
-	// Set the redirect RID so that lookups will be redirected to the
-	// new data
-	redirectEntry.status = Redirect;
-	redirectEntry.redirectRid = newRid;
-
-	// setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectRid); Comiler Error
-    setSlotDirectoryRecordEntry(pageData, rid.slotNum, redirectEntry);
-
-	// Write the updated page out.
-	if(fileHandle.writePage(rid.pageNum, pageData) != SUCCESS){
-		return 1;
-	}
-
-	free(pageData);
 
 	return 0;
 }
 
-//Paolo Di Febbo's readAttribute() implementation
-RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data){
-    // Reading the full record data given its RID.
+RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string attributeName, void *data)
+{
+	// Reading the full record data given its RID.
 	// I do not know how much the read record size will be, so I allocate the whole page size.
 	void * readRecordData = malloc(PAGE_SIZE);
 	if (readRecord(fileHandle, recordDescriptor, rid, readRecordData) != SUCCESS)
@@ -424,13 +432,13 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 					memcpy(data, (char*) readRecordData + offset, INT_SIZE);
 				else
 					offset += INT_SIZE;
-				break;
+			break;
 			case TypeReal:
 				if (attributeFound)
 					memcpy(data, (char*) readRecordData + offset, REAL_SIZE);
 				else
 					offset += REAL_SIZE;
-				break;
+			break;
 			case TypeVarChar:
 				// We have to get the size of the string by reading the integer that precedes the string value itself.
 				memcpy(&stringLength, (char*) readRecordData + offset, VARCHAR_LENGTH_SIZE);
@@ -444,7 +452,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 				}
 				else
 					offset += stringLength;
-				break;
+			break;
 		}
 	}
 
@@ -452,263 +460,292 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
 	return attributeFound ? 0 : 2;
 }
 
-// ReachGoal: our attempt at regorganize page
-// Reorganizes page to get more space
-
-RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle,
-          const vector<Attribute> &recordDescriptor, const unsigned pageNumber){
-        //TODO
-    
-    /*void* pageData = malloc(PAGE_SIZE);
-    if (fileHandle.readPage(pageNumber, pageData) != SUCCESS){
-		return 1;
-    }
-
-    SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
-    
-    for(unsigned k = 0; k < slotHeader.recordEntriesNumber; ++k){
-
-
-
-  
-    
-    }*/ 
-    
-    
-    return 0;
-    
-}
-
-
-//RC printRecord(const vector<Attribute> &recordDescriptor, const void *data);
-RC RecordBasedFileManager::scan(FileHandle &fileHandle,
-    vector<Attribute> recordDescriptor,
-    const string &conditionAttribute,
-    const CompOp compOp,                  // comparision type such as "<" and "="
-    const void *value,                    // used in the comparison
-    const vector<string> &attributeNames, // a list of projected attributes
-    RBFM_ScanIterator &rbfm_ScanIterator)
+// Used for sorting record entries (by offset DESC) in the reorganizePage method.
+bool RecordBasedFileManager::sortLabeledRecordEntriesByOffsetDescComparer(const LabeledSlotDirectoryRecordEntry &recordEntry1, const LabeledSlotDirectoryRecordEntry &recordEntry2)
 {
-    
-   rbfm_ScanIterator.position = 0;
-   int pages = fileHandle.getNumberOfPages();
-   void * page_data = malloc(PAGE_SIZE); 
-   void * readRecordData = malloc(PAGE_SIZE);
-   void * readAttributeData = calloc(PAGE_SIZE, 1);   
-
-   SlotDirectoryHeader slot_directory_header;
-   SlotDirectoryRecordEntry entry; 
-   RID curr_rid;
-   AttrType attr_type;
-   
-   //getting type of condition type
-   vector<Attribute>::iterator attr_it = recordDescriptor.begin(); 
- 
-   for ( ; attr_it != recordDescriptor.end(); ++attr_it){
-      if ((*attr_it).name == conditionAttribute){
-         attr_type = (*attr_it).type;
-         break;
-      }
-   }
-
-   //cycling through all pages in file
-   for(int i = 0; i < pages; ++i){
-      
-      //works if page numbers start from 0
-      if (fileHandle.readPage(i, page_data) != SUCCESS){
-		     return 1;
-      }
-
-      curr_rid.pageNum = i;
-      slot_directory_header = getSlotDirectoryHeader(page_data);
-
-      //cycling through all records on page
-      for(unsigned k = 0; k < slot_directory_header.recordEntriesNumber; ++k){
-
-         curr_rid.slotNum = k;
-         entry = getSlotDirectoryRecordEntry(page_data, k);
-	 
-         if (entry.status == Active){
-
-            fprintf(stderr, "RBFM.scan() found an active record!\n");
-
-	    if (readRecord(fileHandle, recordDescriptor, curr_rid, readRecordData) != SUCCESS)
-	       return 1;
-
-		printRecord(recordDescriptor, readRecordData);
-
-            if (readAttribute(fileHandle, recordDescriptor, curr_rid, conditionAttribute, readAttributeData) != SUCCESS)
-	       return 1;            
-
-            //loads record into ScanIterator, if comparison returns 1, using project function
-            if ( opCompare(readAttributeData, attr_type, compOp, value) == 1){ 
-		fprintf(stderr, "opCompare PASSED!! ENTERING rbfmProject()\n");	
-               rbfmProject(rbfm_ScanIterator, recordDescriptor, attributeNames, readRecordData, curr_rid);               
-	   }
-                              
-         }
-      }
-   }      
-   free(readRecordData); 
-   free(page_data);
-   free(readAttributeData);
-   return 0;
-    
+  return recordEntry1.recordEntry.offset > recordEntry2.recordEntry.offset;
 }
 
+RC RecordBasedFileManager::reorganizePage(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const unsigned pageNumber)
+{
+	// Reads the page.
+	void * pageData = malloc(PAGE_SIZE);
+	if (fileHandle.readPage(pageNumber, pageData) != SUCCESS)
+		return 1;
 
+	// Gets all the "alive" record entries.
 
-//returns 1 if void* agrs pass comparison
-// i.e. ae part of the return set, if notreturns 0
-unsigned RecordBasedFileManager::opCompare(void* in, AttrType type, CompOp op, const void* cmpTo){
-    cout << "RBFM.OpCompare BEGINNING" << endl;
-    size_t size;
-    unsigned rc = 0;
-    int res;
-    if(type == TypeInt){
-        size = INT_SIZE;
-    }
-    else if(type == TypeReal){
-        size = REAL_SIZE;
-    }
-    else if(type == TypeVarChar){
-        size = PAGE_SIZE;
-    }
-    else{
-        fprintf(stderr, "opCompare: invalid typing\n");
-        return 0;
-    }
-    
-    if(type == TypeInt || type == TypeReal){
-        res = memcmp(in, cmpTo, size);
-    }
-    else if(type == TypeVarChar){
-        res = strcmp((char*) in + VARCHAR_LENGTH_SIZE, (char*) cmpTo);
-    }
-    else{
-        fprintf(stderr, "opCompare: invalid type for args\n");
-        return 0;
-    }
-        
-    switch(op){
-        case EQ_OP:
-            if(res == 0) rc = 1;
-            break;
-        case LT_OP:
-            if(res < 0) rc = 1;
-            break;
-        case GT_OP:
-            if(res > 0) rc = 1;
-            break;
-        case LE_OP:
-            if(res <= 0) rc = 1;
-            break;
-        case GE_OP:
-            if(res >= 0) rc = 1;
-            break;
-        case NE_OP:
-            if(res != 0) rc = 1;
-            break;
-        case NO_OP:
-            rc = 1;
-            break;
-        default:
-            fprintf(stderr, "opCompare: invalid compOp\n");
-            return 0;
-    }
-    cout<<"RBFM.OpCompare SUCCESSFULLY COMPLETED" << endl;
-    return rc;
+	SlotDirectoryHeader header = getSlotDirectoryHeader(pageData);
+
+	if (header.recordEntriesNumber == 0)
+		return 0;
+
+	vector<LabeledSlotDirectoryRecordEntry> aliveRecordEntries;
+	for (unsigned i = 0; i < header.recordEntriesNumber; i++)
+	{
+		LabeledSlotDirectoryRecordEntry labeledRecordEntry;
+		labeledRecordEntry.slotNum = i;
+		labeledRecordEntry.recordEntry = getSlotDirectoryRecordEntry(pageData, i);
+
+		if (labeledRecordEntry.recordEntry.recordEntryType == Alive)
+			aliveRecordEntries.push_back(labeledRecordEntry);
+	}
+
+	// Sort the alive record entries by offset DESC (i.e. physical order in the page file).
+	sort(aliveRecordEntries.begin(), aliveRecordEntries.end(), RecordBasedFileManager::sortLabeledRecordEntriesByOffsetDescComparer);
+
+	// For each alive entry, pushes it back in order to be placed contiguous to the previous one.
+	unsigned pageOffset = PAGE_SIZE;
+	for(unsigned k = 0; k != (unsigned) aliveRecordEntries.size(); k++)
+	{
+		// Moving the current offset.
+		pageOffset -= aliveRecordEntries[k].recordEntry.length;
+
+		// Moving the actual record data in the new position.
+		memmove ((char *) pageData + pageOffset, (char *) pageData + aliveRecordEntries[k].recordEntry.offset, aliveRecordEntries[k].recordEntry.length);
+
+		// Updating the slot directory record entry with the new offset.
+		aliveRecordEntries[k].recordEntry.offset = pageOffset;
+		setSlotDirectoryRecordEntry(pageData, aliveRecordEntries[k].slotNum, aliveRecordEntries[k].recordEntry);
+	}
+
+	// Writeback.
+	if (fileHandle.writePage(pageNumber, pageData) != SUCCESS)
+		return 2;
+
+	free(pageData);
+	return 0;
 }
 
-RC RecordBasedFileManager::rbfmProject(RBFM_ScanIterator scan_it, vector<Attribute> recordDescriptor,
-                                       vector<string> projectedNames, void * record, const RID &rid) {
+// checkScanCondition methods are used only within the "scan" method (see its code below).
 
-   vector<Attribute>::iterator attr_it = recordDescriptor.begin();
-   vector<string>::iterator proj_it = projectedNames.begin();
-   void* projAttribute = malloc(PAGE_SIZE);
-   void* to_insert;
-   unsigned pattr_offset = 0;
-   unsigned attr_offset = 0;
-   unsigned varCharSize = 0;
-   unsigned attr_size;
-   
-   cout<<"RBFM.rbfmProject BEGINNING" << endl;
+bool RecordBasedFileManager::checkScanCondition(int dataInt, CompOp compOp, const void * value)
+{
+	// Checking a condition on an integer is the same as checking it on a float with the same value.
+	int valueInt;
+	memcpy (&valueInt, value, INT_SIZE);
+	float convertedInt = (float)valueInt;
 
-   for ( ; proj_it != projectedNames.end(); ++proj_it){
-      attr_offset = 0;
-
-      for(vector<Attribute>::iterator attr_it = recordDescriptor.begin();
-                           attr_it != recordDescriptor.end() ;++attr_it){
-        //Check if current record is next one in projected record.
-        if(strcmp((*attr_it).name.c_str(), (*proj_it).c_str()) == 0){
-          if((*attr_it).type == TypeInt){
-            attr_size = INT_SIZE;
-          }
-          else if((*attr_it).type == TypeReal){
-            attr_size = REAL_SIZE;
-          }
-          else if((*attr_it).type == TypeVarChar){
-            memcpy(&varCharSize, (char*) record + attr_offset, VARCHAR_LENGTH_SIZE);
-            attr_size = INT_SIZE + varCharSize;
-          }
-          else{
-            fprintf(stderr, "rbfmProject: unknown type found\n");
-            return 1;
-          }
-          memcpy((char*) projAttribute + pattr_offset, (char*)record + attr_offset, attr_size);
-          pattr_offset += attr_size;
-          break;
-          
-        }
-
-        if((*attr_it).type == TypeInt){
-          attr_offset += INT_SIZE;
-          
-        }
-        else if((*attr_it).type == TypeReal){
-          attr_offset += REAL_SIZE;
-        }
-        else if((*attr_it).type == TypeVarChar){
-          memcpy(&varCharSize, (char*) record + attr_offset, VARCHAR_LENGTH_SIZE);
-          attr_offset += INT_SIZE + varCharSize;
-        }
-        else{
-          fprintf(stderr, "rbfmProject: unknown type\n");
-          return 1;
-        }
-        
-
-      }
-
-   }
-
-   //Format for insertion into scan iterator
-   to_insert = malloc(pattr_offset);
-   memcpy(to_insert, projAttribute, pattr_offset);
-   free(projAttribute);
-   
-   scan_it.records.push_back(to_insert);
-   scan_it.sizes.push_back(pattr_offset);
-   scan_it.rids.push_back(rid);
- cout<<"RBFM.rbfmProject SUCCESSFULLY done" << endl;
-
-   return 0;
+	return RecordBasedFileManager::checkScanCondition((float) dataInt, compOp, &convertedInt);
 }
 
-RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) { 
-	if(position == records.size()) return RBFM_EOF; 
-	else {
-		rid = rids[position]; 
-		memcpy(data, records[position], sizes[position]);
-	} 
-	++position; 
-	return 0;   
-};
+bool RecordBasedFileManager::checkScanCondition(float dataFloat, CompOp compOp, const void * value)
+{
+	float valueFloat;
+	memcpy (&valueFloat, value, REAL_SIZE);
 
-RC RBFM_ScanIterator::close(){
-   for(unsigned i = 0; i < records.size(); ++i){
-      free(records[i]);
-   }
-   delete this;
-   return 0;
+	switch (compOp)
+	{
+		case EQ_OP:  // =
+			return dataFloat == valueFloat;
+		break;
+		case LT_OP:  // <
+			return dataFloat < valueFloat;
+		break;
+		case GT_OP:  // >
+			return dataFloat > valueFloat;
+		break;
+		case LE_OP:  // <=
+			return dataFloat <= valueFloat;
+		break;
+		case GE_OP:  // >=
+			return dataFloat >= valueFloat;
+		break;
+		case NE_OP:  // !=
+			return dataFloat != valueFloat;
+		break;
+		case NO_OP:  // no condition
+			return true;
+		break;
+	}
+
+	// We should never get here.
+	return false;
+}
+
+bool RecordBasedFileManager::checkScanCondition(char * dataString, CompOp compOp, const void * value)
+{
+	switch (compOp)
+	{
+		case EQ_OP:  // =
+			return strcmp(dataString, (char*) value) == 0;
+		break;
+		case LT_OP:  // <
+			return strcmp(dataString, (char*) value) < 0;
+		break;
+		case GT_OP:  // >
+			return strcmp(dataString, (char*) value) > 0;
+		break;
+		case LE_OP:  // <=
+			return strcmp(dataString, (char*) value) <= 0;
+		break;
+		case GE_OP:  // >=
+			return strcmp(dataString, (char*) value) >= 0;
+		break;
+		case NE_OP:  // !=
+			return strcmp(dataString, (char*) value) != 0;
+		break;
+		case NO_OP:  // no condition
+			return true;
+		break;
+	}
+
+	// We should never get here.
+	return false;
+}
+
+// N.B.: This implementation of the scan method is probably the fastest, because it works directly on the page data.
+// But it has a limitation (not a problem, since this is not specified in the project description): projected attributes are sorted in the same order as they appear in the recordDescriptor.
+RC RecordBasedFileManager::scan(FileHandle &fileHandle,
+      const vector<Attribute> &recordDescriptor,
+      const string &conditionAttribute,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      const vector<string> &attributeNames, // a list of projected attributes
+      RBFM_ScanIterator &rbfm_ScanIterator)
+{
+
+	void * recordData;				// Retrieved complete record data.
+	int recordDataOffset;
+	void * recordOutputData;		// Data output considering the attributeNames filter.
+	int recordOutputDataOffset;
+
+	// Attribute-specific data.
+	int dataInteger;
+	float dataReal;
+	unsigned stringLength;
+	char * dataString;
+
+	// Initialize the vectors that will be returned through the RBFM_ScanIterator.
+	vector<RID> rids;
+	vector<int> dataVectorSizes;
+	vector<void*> dataVector;
+
+	// Cycles through all the pages.
+	void * pageData = malloc(PAGE_SIZE);
+	SlotDirectoryHeader header;
+	SlotDirectoryRecordEntry recordEntry;
+	for (unsigned i = 0; i < fileHandle.getNumberOfPages(); i++)
+	{
+		if (fileHandle.readPage(i, pageData) != SUCCESS)
+			return 1;
+
+		// Cycles through all the "alive" record entries within the page.
+		header = getSlotDirectoryHeader(pageData);
+		for (unsigned j = 0; j < header.recordEntriesNumber; j++)
+		{
+			recordEntry = getSlotDirectoryRecordEntry(pageData, j);
+			if (recordEntry.recordEntryType == Alive)
+			{
+				// Retrieve the actual record data.
+				recordData = malloc(recordEntry.length);
+				recordDataOffset = 0;
+				memcpy	((char*) recordData, ((char*) pageData + recordEntry.offset), recordEntry.length);
+
+				// Set up the record output data, which will contain the projected record entry in function of attributeNames.
+				recordOutputData = malloc(recordEntry.length);
+				recordOutputDataOffset = 0;
+
+				// For every attribute of the record, in function of its type we basically do the same 3 operations:
+				// 1. Copy the attribute value in a local variable
+				// 2. Check if we have to exclude this whole record entry according to the scan condition.
+				// 3. If the attribute is requested in the output projection, append it into recordOutputData variable.
+				bool excludeThisRecord = false;
+				for (unsigned k = 0; k < (unsigned) recordDescriptor.size() && !excludeThisRecord; k++)
+				{
+					// An attribute is projected into the output data if its name appears in the attributeNames string vector.
+					bool includeThisAttribute = (find(attributeNames.begin(), attributeNames.end(), recordDescriptor[k].name) != attributeNames.end());
+
+					// Checks if this attribute is the condition attribute.
+					bool isConditionAttribute = (recordDescriptor[k].name.compare(conditionAttribute) == 0);
+
+					switch (recordDescriptor[k].type)
+					{
+						case TypeInt:
+							// 1.
+							memcpy(&dataInteger, (char*) recordData + recordDataOffset, INT_SIZE);
+
+							// 2.
+							excludeThisRecord = isConditionAttribute && !checkScanCondition(dataInteger, compOp, value);
+
+							// 3.
+							if (includeThisAttribute)
+							{
+								memcpy((char*) recordOutputData + recordOutputDataOffset, (char*) recordData + recordDataOffset, INT_SIZE);
+								recordOutputDataOffset += INT_SIZE;
+							}
+
+							recordDataOffset += INT_SIZE;
+						break;
+						case TypeReal:
+							// 1.
+							memcpy(&dataReal, (char*) recordData + recordDataOffset, REAL_SIZE);
+
+							// 2.
+							excludeThisRecord = isConditionAttribute && !checkScanCondition(dataReal, compOp, value);
+
+							// 3.
+							if (includeThisAttribute)
+							{
+								memcpy((char*) recordOutputData + recordOutputDataOffset, (char*) recordData + recordDataOffset, REAL_SIZE);
+								recordOutputDataOffset += REAL_SIZE;
+							}
+
+							recordDataOffset += REAL_SIZE;
+						break;
+						case TypeVarChar:
+							// 1.
+							// We need to get the size of the string by reading the integer that precedes the string value itself.
+							memcpy(&stringLength, (char*) recordData + recordDataOffset, VARCHAR_LENGTH_SIZE);
+
+							// Then, we get the string and add the terminator.
+							dataString = (char*) malloc(stringLength + 1);
+							memcpy(dataString, (char*) recordData + recordDataOffset + VARCHAR_LENGTH_SIZE, stringLength);
+							dataString[stringLength] = '\0';
+
+							// 2.
+							excludeThisRecord = isConditionAttribute && !checkScanCondition(dataString, compOp, value);
+
+							// 3.
+							if (includeThisAttribute)
+							{
+								memcpy((char*) recordOutputData + recordOutputDataOffset, (char*) recordData + recordDataOffset, VARCHAR_LENGTH_SIZE + stringLength);
+								recordOutputDataOffset += VARCHAR_LENGTH_SIZE + stringLength;
+							}
+
+							recordDataOffset += VARCHAR_LENGTH_SIZE + stringLength;
+						break;
+					}
+				}
+
+				// If this record is not excluded by the condition, include it in the output result vector.
+				if (!excludeThisRecord)
+				{
+					RID returnRid;
+					returnRid.pageNum = i;
+					returnRid.slotNum = j;
+					rids.push_back(returnRid);
+
+					dataVectorSizes.push_back(recordOutputDataOffset);
+					dataVector.push_back(recordOutputData);
+				}
+				else
+					free(recordOutputData);
+
+				free (recordData);
+			}
+		}
+	}
+
+	// Returns the result set through the iterator.
+	rbfm_ScanIterator.setVectors(rids, dataVectorSizes, dataVector);
+
+	free(pageData);
+	return 0;
+}
+
+// NOT MANDATORY. TODO: Implement it?
+RC RecordBasedFileManager::reorganizeFile(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor)
+{
+	return -1;
 }

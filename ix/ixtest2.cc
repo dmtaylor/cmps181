@@ -1,3 +1,7 @@
+// For project 4 we used Paolo's provided solution
+// David Taylor, Jake Zidow
+
+
 #include <iostream>
 
 #include <cstdlib>
@@ -1778,10 +1782,10 @@ void test()
 
     // Extra Credit Work
     // Duplicat Entries
-//    testCase_extra_1(indexAgeFileName, attrAge);
-//    testCase_extra_2(indexAgeFileName, attrAge);
+    testCase_extra_1(indexAgeFileName, attrAge);
+    testCase_extra_2(indexAgeFileName, attrAge);
     // TypeVarChar - mandatory for graduate students
-    //testCase_extra_3(indexEmpNameFileName, attrEmpName);
+    testCase_extra_3(indexEmpNameFileName, attrEmpName);
     return;
 }
 

@@ -1,26 +1,17 @@
-/*
- * pfm.h:   Header file for the index file manager
- * 
- * By:      David Taylor
- *          Jake Zidow
- * 
- * Starter code provided by Paolo Di Febbo, Shel Finkelstein
- * 
- * CMPS181 Spring 2015
- * 
- * */
+
+// For project 4 we used Paolo's provided solution
+// David Taylor, Jake Zidow
 
 
 #ifndef _ix_h_
 #define _ix_h_
 
+#include <iostream>
 #include <vector>
 #include <string>
-#include <iostream>
 
 #include "../rbf/rbfm.h"
 
-# define IX_EOF (-1)  // end of the index scan
 // Used for prevPage in the first page and for nextPage in the last one.
 #define NULL_PAGE_ID					-1
 
@@ -42,18 +33,8 @@
 // Internal error.
 #define ERROR_NO_FREE_SPACE				11
 
-#define REC_ACTIVE_OFF 0
-#define REC_NXTREC_OFF 1
-#define REC_CHLDPTR_OFF 5
-#define REC_TYPE_OFF 9
-#define REC_RID_OFF 13
-#define REC_KEY_OFF 21
-
-#define REC_ACTIVE_SIZE 1
-#define REC_NXTREC_SIZE 4
-#define REC_CHLDPTR_SIZE 4
-#define REC_TYPE_SIZE 4
-#define REC_RID_SIZE 8
+// PageType definition
+enum PageType {LeafPage, NonLeafPage};
 
 // LeafPageHeader definition
 typedef struct
@@ -76,24 +57,11 @@ typedef struct
 {
   void * key;
   unsigned childPageNumber;
-  bool isNull = false;
 } ChildEntry;
 
-// PageType definition
-enum PageType {LeafPage, NonLeafPage};
-
+# define IX_EOF (-1)  // end of the index scan
 
 class IX_ScanIterator;
-/*
-typedef struct
-{
-  unsigned freeSpaceOffset;
-  unsigned numberOfRecords;
-  unsigned firstRecordOffset;
-  unsigned parentPage;
-  unsigned nextPage;
-  bool isLeaf;
-} IndexPageHeader;*/
 
 class IndexManager {
  public:
@@ -123,7 +91,7 @@ class IndexManager {
   // If highKey is null, then the range is lowKey to +infinity
   RC scan(FileHandle &fileHandle,
       const Attribute &attribute,
-	    const void        *lowKey,
+	  const void        *lowKey,
       const void        *highKey,
       bool        lowKeyInclusive,
       bool        highKeyInclusive,
@@ -134,16 +102,10 @@ class IndexManager {
   ~IndexManager  ();                            // Destructor
 
  private:
-    static IndexManager *_index_manager;
-	  static PagedFileManager *_pf_manager;
+  static IndexManager *_index_manager;
+  static PagedFileManager* _pf_manager;
 
-//    void newIndexBasedPage(void * page, char isLeaf, unsigned parent, unsigned next);
-//	void setIndexHeader(void * page, IndexPageHeader indexHeader);
-//	IndexPageHeader getIndexHeader(void * page);
-//    void* formatRecord(void* key, RID &val, Attribute &attribute, unsigned next_offset, unsigned childPageNum);
-    
-    
-    // Auxiliary methods.
+  // Auxiliary methods.
 
   bool isLeafPage(void * pageData);
   bool recordExistsInLeafPage(const Attribute &attribute, const void *key, const RID &rid, void * pageData);
@@ -164,33 +126,30 @@ class IndexManager {
   unsigned getRootPageID(FileHandle fileHandle);
 
   int compareKeys(const Attribute attribute, const void * key1, const void * key2);
+  unsigned getKeyLength(const Attribute &attribute, const void * key);
 
   unsigned getSonPageID(const Attribute attribute, const void * key, void * pageData);
   RC treeSearch(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned currentPageID, unsigned &returnPageID);
-  
-  RC find(FileHandle &fileHandle, const Attribute attribute, const void * key, unsigned &returnPageID);
-    
-  //int compareKeys(Attribute &attribute, void* key1, void* key2);
-    
-	//JAKE: added const to void* arg
-  unsigned getKeySize(Attribute attribute, const void* key);
-	RC pushBackRecord(void * record, Attribute attribute, IX_ScanIterator& scanIterator);
-
 
 };
 
+// IX_ScanIterator: Simple wrapper for RBFM_ScanIterator (they handle the same kind of data, no need for a new one).
 class IX_ScanIterator {
- public:
-  IX_ScanIterator();  							// Constructor
-  ~IX_ScanIterator(); 							// Destructor
+public:
+  IX_ScanIterator() {};
+  IX_ScanIterator(RBFM_ScanIterator &r) {this->rbfm_SI = r;};
+  ~IX_ScanIterator() {};
 
-  RC getNextEntry(RID &rid, void *key);  		// Get next matching entry
-  RC close();             						// Terminate index scan
+  // "data" follows the same format as RelationManager::insertTuple()
+  RC getNextEntry(RID &rid, void *key) {
+	  return rbfm_SI.getNextRecord(rid, key);
+  };
+  RC close() {
+	  return rbfm_SI.close();
+};
 
-	unsigned position;
-	vector<void *> keys; 
-	vector<RID> rids;
-	vector<unsigned> sizes; //stores sizeof key (sizeof rid not included)
+private:
+  RBFM_ScanIterator rbfm_SI;
 };
 
 // print out the error message for a given return code

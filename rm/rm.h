@@ -1,14 +1,6 @@
-/*
- * rm.h:  A header file for the relation manager module
- * 
- * By:    David Taylor
- *        Jake Zidow
- * 
- * Starter code provided by Paolo Di Febbo, Shel Finkelstein
- * 
- * CMPS181 Spring 2015
- * 
- * */
+// For project 4 we used Paolo's provided solution
+// David Taylor, Jake Zidow
+
 
 
 #ifndef _rm_h_
@@ -16,36 +8,57 @@
 
 #include <string>
 #include <vector>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
 #include "../rbf/rbfm.h"
 
 using namespace std;
 
+#define TABLE_FILE_EXTENSION				".t"
 
-# define RM_EOF (-1)  // end of a scan operator
 
-// RM_ScanIterator is an iteratr to go through tuples
-// this is code provided by P.D. Febbo
+#define TABLES_TABLE_NAME					"Tables"
+#define TABLES_TABLE_ID						1
+
+#define TABLES_COL_TABLE_ID					"table-id"
+#define TABLES_COL_TABLE_NAME				"table-name"
+#define TABLES_COL_TABLE_NAME_SIZE			40
+#define TABLES_COL_FILE_NAME				"file-name"
+#define TABLES_COL_FILE_NAME_SIZE			40
+
+#define TABLES_RECORD_DATA_SIZE 			INT_SIZE + TABLES_COL_TABLE_NAME_SIZE + TABLES_COL_FILE_NAME_SIZE
+
+
+#define COLUMNS_TABLE_NAME					"Columns"
+#define COLUMNS_TABLE_ID					2
+
+#define COLUMNS_COL_TABLE_ID				"table-id"
+#define COLUMNS_COL_COLUMN_NAME				"column-name"
+#define COLUMNS_COL_COLUMN_NAME_SIZE		40
+#define COLUMNS_COL_COLUMN_TYPE				"column-type"
+#define COLUMNS_COL_COLUMN_LENGTH			"column-length"
+
+#define COLUMNS_RECORD_DATA_SIZE			INT_SIZE * 3 + COLUMNS_COL_COLUMN_NAME_SIZE
+
+
+#define RM_EOF (-1)  // end of a scan operator
+
+// RM_ScanIterator: Simple wrapper for RBFM_ScanIterator.
 class RM_ScanIterator {
 public:
-    RM_ScanIterator() {};
-    RM_ScanIterator(RBFM_ScanIterator &r) {this->rbfm_SI = r;};
-    ~RM_ScanIterator() {};
+  RM_ScanIterator() {};
+  RM_ScanIterator(RBFM_ScanIterator &r) {this->rbfm_SI = r;};
+  ~RM_ScanIterator() {};
 
-    // "data" follows the same format as RelationManager::insertTuple()
-    RC getNextTuple(RID &rid, void *data) {
-  	  return rbfm_SI.getNextRecord(rid, data);
-    };
-    RC close() {
-  	  return rbfm_SI.close();
-    };
+  // "data" follows the same format as RelationManager::insertTuple()
+  RC getNextTuple(RID &rid, void *data) {
+	  return rbfm_SI.getNextRecord(rid, data);
+  };
+  RC close() {
+	  return rbfm_SI.close();
+  };
 
-  private:
-    friend class RelationManager;
-    RBFM_ScanIterator rbfm_SI;
+private:
+  RBFM_ScanIterator rbfm_SI;
 };
 
 
@@ -101,23 +114,22 @@ protected:
 
 private:
   static RelationManager *_rm;
-  static RecordBasedFileManager *_rbf_manager;
-  // catalog file name information
-  /*static const*/ string tableTableFileName = "sys_table.table";
-  /*static const*/ string tableTableName = "cat_table";
-  /*static const*/ unsigned tableTableId = 0;
-  /*static*/ vector<Attribute> tableDescriptor;
-  
-  /*static const*/ string columnTableName = "cat_cols";
-  /*static const*/ string columnTableFileName= "sys_cols.table";
-  /*static const*/ unsigned columnTableId = 1;
-  /*static */vector<Attribute> columnDescriptor;
-  
-  RC systemInsertTuple(const string &tableName, const void *data, RID &rid);
-  RC systemTablesInsertTuple(const void *data, RID &rid);
-  RC systemColumnsInsertTuple(const void *data, RID &rid);
-  RC getFileInfo(const string &tableName, string &tableFileName, vector<Attribute> &descriptor, unsigned &tableId);
-  unsigned getValidCatalogID(); 
+  static RecordBasedFileManager *_rbfm;
+
+  // Defines.
+  string t_tables;
+  string t_columns;
+
+  // Auxiliary methods.
+
+  RC getTableID(const string &tableName, int &tableID);
+
+  static vector<Attribute> getTablesRecordDescriptor();
+  static vector<Attribute> getColumnsRecordDescriptor();
+
+  static void prepareTablesRecordData(int id, string tableName, void * outputData);
+  static void prepareColumnsRecordData(int tableID, Attribute attr, void * outputData);
+
 };
 
 #endif

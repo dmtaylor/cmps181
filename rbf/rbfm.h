@@ -1,20 +1,15 @@
-/*
- * rbfm.h:  A header file for the relational based file manager
- * 
- * By:  David Taylor
- *      Jake Zidow
- * 
- * Starter code provided by Paolo Di Febbo, Shel Finkelstein
- * 
- * CMPS181 Spring 2015
- * 
- * */
+// For project 4 we used Paolo's provided solution
+// David Taylor, Jake Zidow
+
 
 #ifndef _rbfm_h_
 #define _rbfm_h_
 
 #include <string>
 #include <vector>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "../rbf/pfm.h"
 
@@ -24,40 +19,57 @@
 
 using namespace std;
 
+// Record ID
+typedef struct R
+{
+  unsigned pageNum;
+  unsigned slotNum;
+
+  // This method allows to do comparisons such as "rid1 == rid2".
+  bool operator == (R r)
+  {
+	  return pageNum == r.pageNum && slotNum == r.slotNum;
+  }
+
+  // This method allows to do comparisons such as "rid1 != rid2".
+  bool operator != (R r)
+  {
+	  return pageNum != r.pageNum || slotNum != r.slotNum;
+  }
+
+} RID;
+
 // Slot directory structure.
 
-typedef struct
+typedef struct SDH
 {
   unsigned freeSpaceOffset;
   unsigned recordEntriesNumber;
 } SlotDirectoryHeader;
 
-typedef enum {Active, Inactive, Redirect} RecordStatus;
-typedef struct{
-  unsigned length;
-  int offset;
-} entry_t;
+enum RecordEntryType {Alive, Dead, Tombstone};
 
-// Record ID
-typedef struct
+typedef struct SDRE
 {
-  unsigned pageNum;
-  unsigned slotNum;
-} RID;
-
-// Changed SlotDirectoryRecordEntry as per Paolo's recommendation
-// It now contains a status indicating whether the record is active,
-// deleted, or has been moved to a new location
-typedef struct
-{
-  RecordStatus status;
-  union{
-    entry_t entry;
-    RID redirectRid;
+  enum RecordEntryType recordEntryType;
+  // A slot directory record entry can either contain:
+  // 1. Length and offset of the actual record, or
+  // 2. RID where the record was moved, in case of tombstone
+  union {
+	  struct {unsigned length; unsigned offset;};
+	  RID tombStoneRID;
   };
 } SlotDirectoryRecordEntry;
 
 typedef SlotDirectoryRecordEntry* SlotDirectory;
+
+// Auxiliary struct useful when we need to label a record entry with its relative slot number.
+// N.B.: Used only in the reorganizePage method. NOT used in the actual page data (instead, SlotDirectoryRecordEntry is used).
+typedef struct
+{
+	int slotNum;
+	SlotDirectoryRecordEntry recordEntry;
+} LabeledSlotDirectoryRecordEntry;
 
 // Attribute
 typedef enum { TypeInt = 0, TypeReal, TypeVarChar } AttrType;
@@ -70,7 +82,7 @@ struct Attribute {
     AttrLength length; // attribute length
 };
 
-// Comparison Operator (NOT needed for part 1 of the project)
+// Comparison Operator
 typedef enum { EQ_OP = 0,  // =
            LT_OP,      // <
            GT_OP,      // >
@@ -79,12 +91,6 @@ typedef enum { EQ_OP = 0,  // =
            NE_OP,      // !=
            NO_OP       // no condition
 } CompOp;
-
-
-
-/****************************************************************************
-The scan iterator is NOT required to be implemented for part 1 of the project 
-*****************************************************************************/
 
 # define RBFM_EOF (-1)  // end of a scan operator
 
@@ -97,26 +103,59 @@ The scan iterator is NOT required to be implemented for part 1 of the project
 //  }
 //  rbfmScanIterator.close();
 
-
+// Scan Iterator.
+// When the scan method is called, its results are stored (through the setVectors method) inside the 3 vectors of this class:
+// 1. rids contains the RIDs of the specific record results
+// 2. dataVectorSizes contains the sizes of the specific record results
+// 3. dataVector contains the actual data of the record results
+// Then, in order to access the stored results, the getNextRecord method is used to return one result at a time.
 class RBFM_ScanIterator {
-
-   friend class RecordBasedFileManager;
-   vector<void *> records; 
-   vector<RID> rids;
-   vector<unsigned> sizes;
-
-   //**might cause problems
-   unsigned position;
-   
-
 public:
-  RBFM_ScanIterator() {};
+  RBFM_ScanIterator()
+  {
+	  currentPosition = 0;
+  };
   ~RBFM_ScanIterator() {};
 
-  // "data" follows the same format as RecordBasedFileManager::insertRecord()
-  RC getNextRecord(RID &rid, void *data);
-  RC close();
+  void setVectors(vector<RID> rids, vector<int> dataVectorSizes, vector<void*> dataVector)
+  {
+	  this->rids = rids;
+	  this->dataVectorSizes = dataVectorSizes;
+	  this->dataVector = dataVector;
+  }
 
+  // "data" follows the same format as RecordBasedFileManager::insertRecord()
+  RC getNextRecord(RID &rid, void *data)
+  {
+	  if (currentPosition == rids.size())
+		  return RBFM_EOF;
+
+	  rid = rids[currentPosition];
+	  memcpy(data, dataVector[currentPosition], dataVectorSizes[currentPosition]);
+
+	  currentPosition += 1;
+	  return 0;
+  }
+
+  RC close()
+  {
+	  // Free the memory.
+	  for(vector<void*>::size_type i = 0; i != dataVector.size(); i++)
+		  free(dataVector[i]);
+
+	  // Reset state.
+	  currentPosition = 0;
+	  rids.clear();
+	  dataVectorSizes.clear();
+	  dataVector.clear();
+	  return 0;
+  }
+
+private:
+  unsigned currentPosition;
+  vector<RID> rids;
+  vector<int> dataVectorSizes;
+  vector<void*> dataVector;
 };
 
 
@@ -145,11 +184,6 @@ public:
   // This method will be mainly used for debugging/testing
   RC printRecord(const vector<Attribute> &recordDescriptor, const void *data);
 
-/**************************************************************************************************************************************************************
-***************************************************************************************************************************************************************
-IMPORTANT, PLEASE READ: All methods below this comment (other than the constructor and destructor) are NOT required to be implemented for part 1 of the project
-***************************************************************************************************************************************************************
-***************************************************************************************************************************************************************/
   RC deleteRecords(FileHandle &fileHandle);
 
   RC deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid);
@@ -163,15 +197,14 @@ IMPORTANT, PLEASE READ: All methods below this comment (other than the construct
 
   // scan returns an iterator to allow the caller to go through the results one by one. 
   RC scan(FileHandle &fileHandle,
-      vector<Attribute> recordDescriptor, //every record in table has this format
+      const vector<Attribute> &recordDescriptor,
       const string &conditionAttribute,
       const CompOp compOp,                  // comparision type such as "<" and "="
       const void *value,                    // used in the comparison
       const vector<string> &attributeNames, // a list of projected attributes
       RBFM_ScanIterator &rbfm_ScanIterator);
 
-
-// Extra credit for part 2 of the project, please ignore for part 1 of the project
+// Extra credit for part 2 of the project
 public:
 
   RC reorganizeFile(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor);
@@ -197,11 +230,13 @@ private:
 
   unsigned getPageFreeSpaceSize(void * page);
   unsigned getRecordSize(const vector<Attribute> &recordDescriptor, const void *data);
-  
-  // returns 1 if valid, 0 otherwise
-  unsigned opCompare(void* in, AttrType type, CompOp op, const void* cmpTo);
-  
-  RC rbfmProject(RBFM_ScanIterator scan_it, vector<Attribute> recordDescriptor, vector<string> projectedNames, void * record, const RID &rid); 
+
+  static bool sortLabeledRecordEntriesByOffsetDescComparer(const LabeledSlotDirectoryRecordEntry &recordEntry1, const LabeledSlotDirectoryRecordEntry &recordEntry2);
+
+  static bool checkScanCondition(int dataInteger, CompOp compOp, const void * value);
+  static bool checkScanCondition(float dataReal, CompOp compOp, const void * value);
+  static bool checkScanCondition(char * dataString, CompOp compOp, const void * value);
+
 };
 
 #endif
