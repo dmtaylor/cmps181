@@ -465,10 +465,14 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 	return 0;
 }
 
+
+
+//RC getTableID(const string &tableName, int &tableID)
+//RC readAttribute(const string &tableName, const RID &rid, const string &attributeName, void *data)
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
 {
 	// Security check: User cannot modify the catalog tables.
-	if (tableName.compare(t_tables) == 0 || tableName.compare(t_columns) == 0)
+	if (tableName.compare(t_tables) == 0 || tableName.compare(t_columns) == 0 || tableName.compare(t_indices) == 0)
 		return 1;
 
 	// Open the table file.
@@ -486,7 +490,69 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 	// Close the table file.
 	_rbfm->closeFile(fileHandle);
 
+	
+	//get all indices on tableName (i.e. retrieve all tuples from index_catalog_file w/ equal tableID)	
+	RM_ScanIterator scanIterator;
+	if( _rm->getIndices(tableName, scanIterator) != SUCCESS){
+		fprintf(stderr, "RM.insertTuple(): getIndices() failed\n");
+		return 1;		
+	}
+
+	RID indicesRID;
+	void * IndicesTuple;
+	void * keyAttributeName;
+	void * keyAttributeValue;
+	void * indexFileName;
+	unsigned i;
+	
+	//For each index
+	while (scanIterator.getNextTuple(&indicesRID, indicesTuple) != RBFM_EOF){
+		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+
+		//open IndexFile w/ filename we just read
+
+		for(i = 0; i < recordDescriptor.size(); ++i){
+			if(recordDescriptor[i].name == (string)keyAttributeName){
+				_rm->readAttribute(tableName, rid, (string)keyAttributeName, keyAttributeValue);
+				break;
+			}
+		}
+		
+		//insert into indexfile		
+
+	}
+
 	return result;
+}
+/*RC scan(const string &tableName,
+      const string &conditionAttribute,
+      const CompOp compOp,                  // comparision type such as "<" and "="
+      const void *value,                    // used in the comparison
+      const vector<string> &attributeNames, // a list of projected attributes
+      RM_ScanIterator &rm_ScanIterator);
+*/
+RC RelationManager::getIndices(const string& tableName, RM_ScanIterator& scanIterator){
+
+	//get tableID to search for indices on that table	
+	unsigned tableID;
+	if (getTableID(tableName, &tableID) != SUCCESS)
+		return 1;
+	
+	//open indices file and scan for entries w/ tableID from last comment	
+	FileHandle fileHandle;
+	_rbfm->openFile(t_indices+TABLE_FILE_EXTENSION, fileHandle);
+
+	vector<string> queryProjection;
+	queryProjection.push_back(INDICES_COL_TABLE_ID);
+	queryProjection.push_back(INDICES_COL_ATTR_NAME);
+	queryProjection.push_back(INDICES_COL_FILE_NAME);
+
+	_rm->scan(INDICES_TABLE_NAME, INDICES_COL_TABLE_ID, EQ_OP, &tableID, queryProjection, scanIterator);
+	
+	_rbfm->closeFile(fileHandle);
+	return SUCCESS;
+
 }
 
 RC RelationManager::deleteTuples(const string &tableName)
