@@ -743,23 +743,77 @@ RC createIndex(const string &tableName, const string &attributeName){
         return 1;
     }
     
-    //TODO: insert index file into catalog here
+    //insert index file into catalog here
     int tableId;
     
     if(getTableID(tableName, tableId) != SUCCESS){
         return 1;
     }
     
+    vector<Attribute> tableAttrs;
+    Attribute namedAttribute;
+    bool foundAttr = false;
+    int i;
+    // Get Attribute details
+    if(getAttributes(tableName, tableAttrs) != SUCCESS){
+        return 1;
+    }
+    for(i=0; i<tableAttrs.length(); ++i){
+        if(tableAttrs[i].name.compare(attributeName) == 0){
+            foundAttr = true;
+            namedAttribute = tableAttrs[i];
+            break;
+        }
+    }
+    if(!foundAttr){
+        fprintf(stderr, "RelationManager.createIndex: attribute name not in table\n");
+        return 2;
+    }
     
+    FileHandle indexCatalogHandle;
+    if(_rbf->openFile(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indexCatalogHandle) != SUCCESS){
+        return 1;
+    }
+    
+    RID rid;
+    
+    void* catalogData = malloc(INDICES_RECORD_DATA_SIZE);
+    prepareIndicesRecordData(tableId, tableName, namedAttribute, catalogData);
+    if(_rbf->insertRecord(indexCatalogHandle, getIndicesRecordDescriptor(), catalogData, rid) != SUCCESS){
+        fprintf(stderr, "RelationManager.createIndex: insert into index catalog failed\n");
+        return 3;
+    }
+    
+    if(_rbf-closeFile(indexCatalogHandle) != SUCCESS){
+        return 1;
+    }
     
     //TODO: insert all entries into newly created index here
     
+    void* dummyValue = malloc(2*INT_SIZE);
+    memset(dummyValue, 0, 2*INT_SIZE);
     vector<string> indexAttr;
     indexAttr.push_back(attributeName);
     
     RM_ScanIterator rm_scanIterator;
     
+    if(scan(tableName, namedAttribute, NO_OP, dummyValue, indexAttr, rm_scanIterator) != SUCCESS){
+        fprintf(stderr, "RelationManager.createTable: full scan to populate index failed\n");
+        return 4;
+    }
+    free(dummyValue);
+    void* key = malloc(PAGE_SIZE);
+    while(rm_scanIterator.getNextTuple(rid, key) != RM_EOF){
+        RC result = _ix->insertEntry(indexHandle, namedAttribute, key, rid);
+        if(result != SUCCESS){
+            return result;
+        }
+    }
+    rm_scanIterator.close();
+    free(key);
     
+    //close files here TODO
+    _rbf->closeFile(indexHandle);
     
     return 0;
 }
