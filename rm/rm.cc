@@ -668,6 +668,7 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 	return result;
 }
 
+// TODO: update for indexes?
 RC RelationManager::updateTuple(const string &tableName, const void *data, const RID &rid)
 {
 	// Security check: User cannot modify the catalog tables.
