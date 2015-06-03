@@ -76,12 +76,20 @@ private:
 
 class RM_IndexScanIterator {
 public:
-    RM_IndexScanIterator();
+    RM_IndexScanIterator() {};
+    RM_IndexScanIterator(IX_ScanIterator &ix) {this->ix_SI = ix;};
     ~RM_IndexScanIterator();
     
-    RC getNextEntry(RID &rid, void* key);
+    RC getNextEntry(RID &rid, void* key){
+        return ix_SI.getNextEntry(rid, key);
+    };
     
-    RC close();
+    RC close(){
+        return ix_SI.close();
+    };
+    
+private:
+    IX_ScanIterator ix_SI;
     
 };
 

@@ -932,8 +932,37 @@ RC indexScan(const string &tableName,
         bool highKeyInclusive,
         RM_IndexScanIterator &rm_IndexScanIterator)
 {
-    //TODO
+    // Open the table file.
+	FileHandle fileHandle;
+	if (_ix->openFile(tableName+ "_" + attributeName +INDEX_FILE_EXTENSION, fileHandle) != SUCCESS)
+		return 1;
     
+    // Get the Attribute with the specified name
+    vector<Attribute> tableAttrs;
+    Attribute namedAttribute;
+    bool foundAttr = false;
+    int i;
+    // Get Attribute details
+    if(getAttributes(tableName, tableAttrs) != SUCCESS){
+        return 1;
+    }
+    for(i=0; i<tableAttrs.length(); ++i){
+        if(tableAttrs[i].name.compare(attributeName) == 0){
+            foundAttr = true;
+            namedAttribute = tableAttrs[i];
+            break;
+        }
+    }
+    if(!foundAttr){
+        fprintf(stderr, "RelationManager.indexScan: attribute name not in table\n");
+        return 2;
+    }
     
-    return -1;
+    IX_ScanIterator ix_SI;
+	_ix->scan(fileHandle, namedAttribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive, ix_SI);
+	rm_IndexScanIterator = RM_IndexScanIterator(ix_SI);
+
+	_rbfm->closeFile(fileHandle);
+    
+    return 0;
 }
