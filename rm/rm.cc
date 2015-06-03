@@ -347,7 +347,7 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 RC RelationManager::deleteTable(const string &tableName)
 {
 	// Security check: User cannot delete the catalog tables.
-	if (tableName.compare(t_tables) == 0 || tableName.compare(t_columns) == 0)
+	if (tableName.compare(t_tables) == 0 || tableName.compare(t_columns) == 0 || tableName.compare(t_indices) == 0)
 		return 1;
 
 	// Gets the table ID.
@@ -624,8 +624,42 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 	// Gets the record descriptor of the table.
 	vector<Attribute> recordDescriptor;
 	getAttributes(tableName, recordDescriptor);
+    
+    RM_ScanIterator scanIterator;
+	if( _rm->getIndices(tableName, scanIterator) != SUCCESS){
+		fprintf(stderr, "RM.insertTuple(): getIndices() failed\n");
+		return 1;		
+	}
+    
+    FileHandle indexFileHandle;
+	RID indicesRID;
+	void * indicesTuple;
+	void * keyAttributeName;
+	void * keyAttributeValue;
+	void * indexFileName;
+	unsigned i;
+	
+	//For each index
+	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
+		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
-	// Delete the record.
+		for(i = 0; i < recordDescriptor.size(); ++i){
+			if(recordDescriptor[i].name == (char*)keyAttributeName){
+				_rm->readAttribute(tableName, rid, (char*)keyAttributeName, keyAttributeValue);
+				break;
+			}
+		}
+		//open IndexFile w/ filename we just read		
+		_ix->openFile((char*)indexFileName, indexFileHandle);
+
+		//delete from indexfile		
+		_ix->deleteEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
+
+		_ix->closeFile(indexFileHandle);
+	}
+    
+    // Delete the record.
 	RC result = _rbfm->deleteRecord(fileHandle, recordDescriptor, rid);
 
 	// Close the table file.
@@ -853,8 +887,39 @@ RC createIndex(const string &tableName, const string &attributeName){
 }
 
 RC destroyIndex(const string &tableName, const string &attributeName){
-    //TODO
+    string indexFileName = tableName + string("_") + attributeName + INDEX_FILE_EXTENSION;
     
+    int tableID;
+	if (getTableID(tableName, tableID) != SUCCESS)
+		return 2;
+    
+    // Removes its entry from "Indices".
+
+	FileHandle fileHandle;
+	if (_rbfm->openFile(t_indices+TABLE_FILE_EXTENSION, fileHandle) != SUCCESS)
+		return 4;
+
+	// Query: "select table-id from Tables where table-id = " + tableID
+	// N.B.: Useless query projection. I need only the RID, not the data.
+	// N.B.2: Low level RBFM operations, since it is a catalog table.
+	RBFM_ScanIterator rmsi;
+	vector<string> queryProjection;
+	queryProjection.push_back(INDICES_COL_FILE_NAME);
+	if (_rbfm->scan(fileHandle, getIndicesRecordDescriptor(), INDICES_COL_FILE_NAME, EQ_OP, &indexFileName, queryProjection, rmsi) != SUCCESS)
+		return 5;
+
+	RID rid;
+	void *returnedData = malloc(INT_SIZE);
+	// Must be only one result from the previous query -> no loop needed.
+	rmsi.getNextRecord(rid, returnedData);
+
+	// Actual record deletion.
+	_rbfm->deleteRecord(fileHandle, getTablesRecordDescriptor(), rid);
+	_rbfm->closeFile(fileHandle);
+
+	rmsi.close();
+    
+    _ix->destroyFile(indexFileName);
     
     return 0;
 }
@@ -870,5 +935,5 @@ RC indexScan(const string &tableName,
     //TODO
     
     
-    return 0;
+    return -1;
 }
