@@ -18,6 +18,7 @@
 
 RelationManager* RelationManager::_rm = 0;
 RecordBasedFileManager* RelationManager::_rbfm = 0;
+IndexManager* RelationManager::_ix = 0;
 
 RelationManager* RelationManager::instance()
 {
@@ -509,8 +510,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 	
 	//For each index
 	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
-		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
-		_rm->readAttribute(INDICES_TABLE_NAME, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
 		for(i = 0; i < recordDescriptor.size(); ++i){
 			if(recordDescriptor[i].name == (char*)keyAttributeName){
@@ -572,13 +573,40 @@ RC RelationManager::deleteTuples(const string &tableName)
 	FileHandle fileHandle;
 	if (_rbfm->openFile(tableName+TABLE_FILE_EXTENSION, fileHandle) != SUCCESS)
 		return 2;
+    
 
 	// Delete the records.
 	RC result = _rbfm->deleteRecords(fileHandle);
 
 	// Close the table file.
 	_rbfm->closeFile(fileHandle);
+    
+    // Zero index files
+    
+    RM_ScanIterator indicesIter;
+    if(getIndices(tableName, indicesIter) != SUCCESS){
+        fprintf(stderr, "RelationManager.deleteTuples: get indices failed\n");
+        return 1;
+    }
+    
+    FileHandle indexFileHandle;
+	RID indicesRID;
+	void * indicesTuple;
+	void * keyAttributeName;
+	void * keyAttributeValue;
+	void * indexFileName;
+	unsigned i;
+    
+    // handle zeroing the index file by deleting and remaking
+    while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
+		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
+		//open IndexFile w/ filename we just read		
+		_ix->destroyFile((char*)indexFileName);
+        
+        _ix->createFile((char*)indexFileName);
+	}
+    
 	return result;
 }
 
