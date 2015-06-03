@@ -963,7 +963,7 @@ RC indexScan(const string &tableName,
 	_ix->scan(fileHandle, namedAttribute, lowKey, highKey, lowKeyInclusive, highKeyInclusive, ix_SI);
 	rm_IndexScanIterator = RM_IndexScanIterator(ix_SI);
 
-	_rbfm->closeFile(fileHandle);
+	_ix->closeFile(fileHandle);
     
     return 0;
 }
