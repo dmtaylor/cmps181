@@ -194,28 +194,41 @@ class IndexScan : public Iterator
 
 class Filter : public Iterator {
     // Filter operator
+	private:
+		Iterator* input;
+		Condition condition;
+		vector<Attribute> inputAttributes;
     public:
         Filter(Iterator *input,                         // Iterator of input R
                const Condition &condition               // Selection condition
         );
         ~Filter(){};
 
-        RC getNextTuple(void *data) {return QE_EOF;};
+        RC getNextTuple(void *data); //{return QE_EOF;};
+
+		//static checkCondition(inputAttributes, data, this->condition);
+
         // For attribute in vector<Attribute>, name it as rel.attr
-        void getAttributes(vector<Attribute> &attrs) const{};
+        void getAttributes(vector<Attribute> &attrs) const; //{};
 };
 
 
 class Project : public Iterator {
     // Projection operator
+	private:
+		Iterator* input;
+		vector<Attribute> inputAttributes;
+		vector<Attribute> outputAttributes;
+
     public:
         Project(Iterator *input,                            // Iterator of input R
                 const vector<string> &attrNames){};           // vector containing attribute names
         ~Project(){};
 
-        RC getNextTuple(void *data) {return QE_EOF;};
+        RC getNextTuple(void *data); // {return QE_EOF;};
+
         // For attribute in vector<Attribute>, name it as rel.attr
-        void getAttributes(vector<Attribute> &attrs) const{};
+        void getAttributes(vector<Attribute> &attrs) const; //{};
 };
 
 

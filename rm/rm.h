@@ -78,7 +78,7 @@ class RM_IndexScanIterator {
 public:
     RM_IndexScanIterator() {};
     RM_IndexScanIterator(IX_ScanIterator &ix) {this->ix_SI = ix;};
-    ~RM_IndexScanIterator();
+    ~RM_IndexScanIterator() {};
     
     RC getNextEntry(RID &rid, void* key){
         return ix_SI.getNextEntry(rid, key);

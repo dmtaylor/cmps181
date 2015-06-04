@@ -510,8 +510,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 	
 	//For each index
 	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
-		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
-		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
 		for(i = 0; i < recordDescriptor.size(); ++i){
 			if(recordDescriptor[i].name == (char*)keyAttributeName){
@@ -598,8 +598,8 @@ RC RelationManager::deleteTuples(const string &tableName)
 	unsigned i;
     
     // handle zeroing the index file by deleting and remaking
-    while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
-		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+    while (indicesIter.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
 		//open IndexFile w/ filename we just read		
 		_ix->destroyFile((char*)indexFileName);
@@ -641,8 +641,8 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 	
 	//For each index
 	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
-		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
-		_rm->readAttribute(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
 		for(i = 0; i < recordDescriptor.size(); ++i){
 			if(recordDescriptor[i].name == (char*)keyAttributeName){
@@ -799,7 +799,7 @@ RC RelationManager::reorganizeTable(const string &tableName)
 
 //Index Functions
 
-RC createIndex(const string &tableName, const string &attributeName){
+RC RelationManager::createIndex(const string &tableName, const string &attributeName){
     //TODO
     string indexFileName = tableName + string("_") + attributeName + INDEX_FILE_EXTENSION;
     
@@ -827,7 +827,7 @@ RC createIndex(const string &tableName, const string &attributeName){
     if(getAttributes(tableName, tableAttrs) != SUCCESS){
         return 1;
     }
-    for(i=0; i<tableAttrs.length(); ++i){
+    for(i=0; i<tableAttrs.size(); ++i){
         if(tableAttrs[i].name.compare(attributeName) == 0){
             foundAttr = true;
             namedAttribute = tableAttrs[i];
@@ -840,7 +840,7 @@ RC createIndex(const string &tableName, const string &attributeName){
     }
     
     FileHandle indexCatalogHandle;
-    if(_rbf->openFile(INDICES_TABLE_NAME + TABLE_FILE_EXTENSION, indexCatalogHandle) != SUCCESS){
+    if(_rbfm->openFile(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indexCatalogHandle) != SUCCESS){
         return 1;
     }
     
@@ -848,12 +848,12 @@ RC createIndex(const string &tableName, const string &attributeName){
     
     void* catalogData = malloc(INDICES_RECORD_DATA_SIZE);
     prepareIndicesRecordData(tableId, tableName, namedAttribute, catalogData);
-    if(_rbf->insertRecord(indexCatalogHandle, getIndicesRecordDescriptor(), catalogData, rid) != SUCCESS){
+    if(_rbfm->insertRecord(indexCatalogHandle, getIndicesRecordDescriptor(), catalogData, rid) != SUCCESS){
         fprintf(stderr, "RelationManager.createIndex: insert into index catalog failed\n");
         return 3;
     }
     
-    if(_rbf-closeFile(indexCatalogHandle) != SUCCESS){
+    if(_rbfm->closeFile(indexCatalogHandle) != SUCCESS){
         return 1;
     }
     
@@ -866,7 +866,7 @@ RC createIndex(const string &tableName, const string &attributeName){
     
     RM_ScanIterator rm_scanIterator;
     
-    if(scan(tableName, namedAttribute, NO_OP, dummyValue, indexAttr, rm_scanIterator) != SUCCESS){
+    if(scan(tableName, attributeName, NO_OP, dummyValue, indexAttr, rm_scanIterator) != SUCCESS){
         fprintf(stderr, "RelationManager.createTable: full scan to populate index failed\n");
         return 4;
     }
@@ -882,12 +882,12 @@ RC createIndex(const string &tableName, const string &attributeName){
     free(key);
     
     //close files here TODO
-    _rbf->closeFile(indexHandle);
+    _rbfm->closeFile(indexHandle);
     
     return 0;
 }
 
-RC destroyIndex(const string &tableName, const string &attributeName){
+RC RelationManager::destroyIndex(const string &tableName, const string &attributeName){
     string indexFileName = tableName + string("_") + attributeName + INDEX_FILE_EXTENSION;
     
     int tableID;
@@ -925,7 +925,7 @@ RC destroyIndex(const string &tableName, const string &attributeName){
     return 0;
 }
 
-RC indexScan(const string &tableName,
+RC RelationManager::indexScan(const string &tableName,
         const string &attributeName,
         const void* lowKey,
         const void* highKey,
@@ -942,12 +942,12 @@ RC indexScan(const string &tableName,
     vector<Attribute> tableAttrs;
     Attribute namedAttribute;
     bool foundAttr = false;
-    int i;
+    unsigned i;
     // Get Attribute details
     if(getAttributes(tableName, tableAttrs) != SUCCESS){
         return 1;
     }
-    for(i=0; i<tableAttrs.length(); ++i){
+    for(i=0; i<tableAttrs.size(); ++i){
         if(tableAttrs[i].name.compare(attributeName) == 0){
             foundAttr = true;
             namedAttribute = tableAttrs[i];
