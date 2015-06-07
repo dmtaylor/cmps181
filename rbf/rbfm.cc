@@ -705,7 +705,10 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle,
 
 							// 2.
 							excludeThisRecord = isConditionAttribute && !checkScanCondition(dataString, compOp, value);
-
+                            
+                            //free as per Benji's suggestion
+                            free(dataString);
+                            
 							// 3.
 							if (includeThisAttribute)
 							{

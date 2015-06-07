@@ -33,13 +33,28 @@ bool Filter::checkCondition(vector<Attribute> descriptor, void* data, Condition 
 	unsigned lhsOffset = 0;
 	unsigned rhsOffset = 0;
 	bool found = false;
-`	unsigned i;	
+	unsigned i;
+	unsigned vcSize = 0;	
 
 	for( i = 0; i < descriptor.size(); ++i){
-		if(condition.lhsAttr == descriptor[i].name){
+		if(condition.lhsAttr == descriptor[i].name){//might have to change to account for attribute names
 			leftAttribute = descriptor[i];
 			found = true;
 			break;
+		}
+		if(descriptor[i].type == TypeInt){
+			lhsOffset += INT_SIZE;
+		}
+		else if(descriptor[i].type == TypeReal){
+			lhsOffset += REAL_SIZE;
+		}
+		else if(descriptor[i].type == TypeVarChar){
+			memcpy(&vcSize, (char*) data + lhsOffset, VARCHAR_LENGTH_SIZE);
+			lhsOffset += vcSize + VARCHAR_LENGTH_SIZE;
+		}
+		else{// should not get here
+			fprintf(stderr, "Filter.checkCondition(): Unsupported lhs type\n");
+			return false;
 		}
 	}
 
@@ -51,11 +66,25 @@ bool Filter::checkCondition(vector<Attribute> descriptor, void* data, Condition 
 	if(condition.bRhsIsAttr){
 
 		found = false;
-		for(i = 0; i < descriptor.size(); ++i){
+		for(i = 0; i < descriptor.size(); ++i){//might have to change to account for attribute names
 			if (descriptor[i].name == condition.rhsAttr){		
 				rightAttribute = descriptor[i];
 				found = true;
 				break;
+			}
+			if(descriptor[i].type == TypeInt){
+				rhsOffset += INT_SIZE;
+			}
+			else if(descriptor[i].type == TypeReal){
+				rhsOffset += REAL_SIZE;
+			}
+			else if(descriptor[i].type == TypeVarChar){
+				memcpy(&vcSize, (char*) data + lhsOffset, VARCHAR_LENGTH_SIZE);
+				rhsOffset += vcSize + VARCHAR_LENGTH_SIZE;
+			}
+			else{// should not get here
+				fprintf(stderr, "Filter.checkCondition(): Unsupported rhs type\n");
+				return false;
 			}
 		}
 		if(!found){
@@ -68,13 +97,84 @@ bool Filter::checkCondition(vector<Attribute> descriptor, void* data, Condition 
 			return false;
 		}
 
-		if ()
-
+		if(leftAttribute.type == TypeInt){
+			int lhsIntData;
+			memcpy(&lhsIntData, (char*) data + lhsOffset, INT_SIZE);
+			return checkCondition(lhsIntData, condition.op, (char*)data + rhsOffset);
+		}
+		else if(leftAttribute.type == TypeReal){
+			float lhsFloatData;
+			memcpy(&lhsFloatData, (char*) data + lhsOffset, REAL_SIZE);
+			return checkCondition(lhsFloatData, condition.op, (char*)data + rhsOffset);
+		}
+		else if(leftAttribute.type == TypeVarChar){
+			unsigned lhsVarcharLen;
+			unsigned rhsVarcharLen;
+			memcpy(&lhsVarcharLen, (char*) data + lhsOffset, VARCHAR_LENGTH_SIZE);
+			memcpy(&rhsVarcharLen, (char*) data + rhsOffset, VARCHAR_LENGTH_SIZE);
+			
+			char* lhsTempStr = malloc(lhsVarcharLen + 1);
+			char* rhsTempStr = malloc(rhsVarcharLen + 1);
+			
+			memcpy(lhsTempStr, (char*) data + lhsOffset + VARCHAR_LENGTH_SIZE, lhsVarcharLen);
+			memcpy(rhsTempStr, (char*) data + rhsOffset + VARCHAR_LENGTH_SIZE, rhsVarcharLen);
+			lhsTempStr[lhsVarcharLen] = '\0';
+			rhsTempStr[rhsVarcharLen] = '\0';
+			
+			bool res = checkCondition(lhsTempStr, condition.op, rhsTempStr);
+			
+			free(lhsTempStr);
+			free(rhsTempStr);
+			
+			return res;
+			
+		}
+		else{//should not get here
+			return false;
+		}
 
 	} else{
-
-
-
+		if(condition.rhsValue.type != leftAttribute.type){
+			fprintf(stderr, "Filter.checkCondition() rhs(const)/lhs attribute types don't match\n");
+			return false;
+		}
+		
+		if(condition.rhsValue.type == TypeInt){
+			int lhsIntData;
+			memcpy(&lhsIntData, (char*) data + lhsOffset, INT_SIZE);
+			return checkCondition(lhsIntData, condition.op, condition.rhsValue.data);
+		}
+		else if(condition.rhsValue.type == TypeReal){
+			int lhsFloatData;
+			memcpy(&lhsFloatData, (char*) data + lhsOffset, REAL_SIZE);
+			return checkCondition(lhsIntData, condition.op, condition.rhsValue.data);
+		}
+		else if(condition.rhsValue.type == TypeVarChar){
+			unsigned lhsVarcharLen;
+			unsigned rhsVarcharLen;
+			memcpy(&lhsVarcharLen, (char*) data + lhsOffset, VARCHAR_LENGTH_SIZE);
+			memcpy(&rhsVarcharLen, condition.rhsValue.data, VARCHAR_LENGTH_SIZE);
+			
+			char* lhsTempStr = malloc(lhsVarcharLen + 1);
+			char* rhsTempStr = malloc(rhsVarcharLen + 1);
+			
+			memcpy(lhsTempStr, (char*) data + lhsOffset + VARCHAR_LENGTH_SIZE, lhsVarcharLen);
+			memcpy(rhsTempStr, condition.rhsValue.data + VARCHAR_LENGTH_SIZE, rhsVarcharLen);
+			lhsTempStr[lhsVarcharLen] = '\0';
+			rhsTempStr[rhsVarcharLen] = '\0';
+			
+			bool res = checkCondition(lhsTempStr, condition.op, rhsTempStr);
+			
+			free(lhsTempStr);
+			free(rhsTempStr);
+			
+			return res;
+			
+		}
+		else{// should not get here
+			return false;
+		}
+		
 	}
 
 }
@@ -215,7 +315,8 @@ RC Project::getNextTuple(void* data){
 		bufferOffset += currAttributeSize;
 		dataOffset += currAttributeSize;
 
-	}	
+	}
+	free(buffer);
 
 	return SUCCESS;
 }
