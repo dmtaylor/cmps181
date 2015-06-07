@@ -1,7 +1,7 @@
 CMPS 181 project
 ================
 
-Current iteration: 3
+Current iteration: 4
 
 By: David Taylor (damtaylo)
     Jake Zidow (jrzidow)
@@ -16,7 +16,8 @@ Given instructions
 
 - Implement the Relation Manager (RM):
 
-- By default you should not change those functions of the RM and RM_ScanIterator class defined in rm/rm.h. If you think some changes are really necessary, please contact us first.
+- By default you should not change those functions of the RM and RM_ScanIterator class defined in rm/rm.h.
+    If you think some changes are really necessary, please contact us first.
 
 Project 2 Notes
 ---------------
@@ -62,4 +63,21 @@ Joke(3):
 Q: how many programmers does it take to change a light bulb?
 
 A: none, that's a hardware problem
+
+Project 4 Notes
+---------------
+
+Dated 2015-6-7
+
+In implementing project 4, we ran into quite a few issues. While we were able to
+get quite a bit of code written, time constraints prevented us from fully
+implementing and testing the code. We expect to get 0 points on the testing
+portion. However, we have implemented a good portion of the QE module, as well
+as retrofitted the RM module to handle working with indices.
+
+If there are any questions please direct them to us via email(ucsc_id@ucsc.edu).
+
+Joke(4):
+
+When your hammer is C++, everything begins to look like a thumb.
 

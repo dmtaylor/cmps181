@@ -1,4 +1,4 @@
-Project 3 Report
+Project 4 Report
 ================
 
 By: David Taylor (damtaylo)
@@ -7,67 +7,44 @@ By: David Taylor (damtaylo)
 Summary
 -------
 
-All test cases pass if there exists no index files in the current working
-directory. We have a  segmentation fault when running extra_test_case3 so please
-comment out extra credit tests before running tests.         
+In implementing the query engine, we were met with production difficulties and
+setbacks, which made development by the final due date challenging. As of this
+writing, no test cases should work. While a good amount of code exists, and
+much work was done on it, we were unable to fully implement the query engine.
     
 Requirements
 ------------
 
-For this assignment, we need to design and implement an index for our fledgling
-database, using the paged file manager module from before to store the index.
-The index was required to be a B+tree index, taking in TypeInts, TypeReals, or
-TypeVarChars as keys, and RIDs as values. The index manager module needs
-to support file creation and management, insertion, deletion, and scans through
-the index.
+For this assignment, we needed to do two things: to retrofit the RelationManager
+module to handle working with indices and to implement a query engine to execute
+a query plan. The assignment specifications give some instructions for both the
+former and the latter, but left some of the implementation details up to the
+developers.
 
 Design
 ------
 
-When designing this project, we followed the advice and design strategy provided
-by P. Di Febbo. Each node in the B+tree is a page in our paged file system,
-with the first byte of the page indicating if the node is an internal or leaf
-node. Each page has a header containing the number of entries on the page and
-a free space offset indicating how much of the record is filled, with leaf nodes
-also containing pointers to the previous and next leaf node.
-
-For insertion, we used the algorithm provided by the text, making use of a
-recursive design to insert further down the tree, handle node splits, and pass
-entries up in the tree if necessary. For deletes, we used the simple delete
-suggestion provided, where we simply delete the entry from the leaf node and
-decline to merge pages. This results in some space inefficiency when storing the
-index file, but reduces the complexity of the algorithm. For a scan, we traverse
-down the tree to the lower bound, and advance up in the leaf nodes until we find
-the stopping point.
+In our design for integrating indices into the RelationManager module, we
+decided to use a system catalog to keep track of all index files. Working very
+similarly to the Tables and Columns catalogs, the Indices catalog is used to
+track all existing indices. When an RM operation is made which will modify
+any indices, such as an insert, the catalog is used to fetch the indices and
+make the appropriate modifications. For the QE module, we followed the design
+specifications in the instructions.
 
 Implementation
 --------------
 
-In implementing this algorithm, we stayed as close to Paolo's design as we
-could. We implemented pointers to other nodes as page numbers in the file, and
-handled data storage as in project 2. On each page, our records are stored in
-sorted order (as required by the B+tree), and operations are implemented to
-maintain this ordering.
-
-For insertion, we made use of a helper insert function for handling the
-recursion: the majority of the insert code is located in there. For delete, we
-simply find the leaf page the record is stored on, overwrite the record, and
-adjust the header appropriately. We also implemented (or used with Paolo's
-permission) several helper functions to aid in our implementation.
-
-Due to the frequent loading and copying of pages, our program has fairly heavy
-memory usage. While controlling memory usage was not a priority on this
-assignment, the majority of allocations we subsequently freed. There might
-still be some memory leak, but we deemed it to be acceptable; please see
-testing for more details.
+We were able to implement much of the RM modifications and the QE module,
+however not entirely. Implementing the indices catalog resulted in delays, and
+understanding the interface design for the QE module consumed a good deal of
+production time. We were able to implement all QE modules except for the
+Nested-Loop-Join interface, and we implemented most of the modifications to RM.
 
 Testing
 -------
 
-For testing, we used the provided tests to determine the accuracy of our code.
-When running the tests with a blank slate, all except the optional tests passed,
-which we deemed acceptable.
-
-When testing our program, we paid attention to the performance carefully.
-In each run, we noticed no completely adverse running times, and our memory
-usage was not sufficient to slow the program.
+Due to the delays in production, we were unable to do any rigorous testing on
+our codebase. As such, we are unsure as to the correctness of the implemented
+code. We have assumed that we will receive zero points on the testing portion
+of the grading.
