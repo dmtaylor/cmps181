@@ -39,7 +39,8 @@ We were able to implement much of the RM modifications and the QE module,
 however not entirely. Implementing the indices catalog resulted in delays, and
 understanding the interface design for the QE module consumed a good deal of
 production time. We were able to implement all QE modules except for the
-Nested-Loop-Join interface, and we implemented most of the modifications to RM.
+Nested-Loop-Join getNextTuple function, and we implemented all of the
+modifications to RM.
 
 Testing
 -------

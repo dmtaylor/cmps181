@@ -72,7 +72,7 @@ Dated 2015-6-7
 In implementing project 4, we ran into quite a few issues. While we were able to
 get quite a bit of code written, time constraints prevented us from fully
 implementing and testing the code. We expect to get 0 points on the testing
-portion. However, we have implemented a good portion of the QE module, as well
+portion. However, we have implemented most of the QE module, as well
 as retrofitted the RM module to handle working with indices.
 
 If there are any questions please direct them to us via email(ucsc_id@ucsc.edu).
