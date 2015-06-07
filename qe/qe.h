@@ -239,17 +239,24 @@ class Project : public Iterator {
 
 class NLJoin : public Iterator {
     // Nested-Loop join operator
+	private:
+		Iterator* leftIn;
+		TableScan rightIn;
+		Condition condition;
+		unsigned numPages;
+		vector<Attribute> lrAttributes;
+
     public:
         NLJoin(Iterator *leftIn,                             // Iterator of input R
                TableScan *rightIn,                           // TableScan Iterator of input S
                const Condition &condition,                   // Join condition
-               const unsigned numPages                       // Number of pages can be used to do join (decided by the optimizer)
-        ){};
+               const unsigned numPages);                     // Number of pages can be used to do join (decided by the optimizer)
+        
         ~NLJoin(){};
 
-        RC getNextTuple(void *data){return QE_EOF;};
+        RC getNextTuple(void *data); //{return QE_EOF;};
         // For attribute in vector<Attribute>, name it as rel.attr
-        void getAttributes(vector<Attribute> &attrs) const{};
+        void getAttributes(vector<Attribute> &attrs) const;  
 };
 
 
