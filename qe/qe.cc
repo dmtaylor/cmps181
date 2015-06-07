@@ -226,4 +226,41 @@ void Project::getAttributes(vector<Attribute> &attrs)const{
 
 }
 
+NLJoin::NLJoin(Iterator *leftIn, TableScan *rightIn, 
+		const Condition &condition, const unsigned numPages){
+
+	this->leftIn = leftIn;
+	this->rightIn = rightIn;
+	this->condition = condition;
+	this->numPages = numPages;
+
+	vector<Attribute> leftAttributes;
+	vector<Attribute> rightAttributes;
+
+	leftIn->getAttributes(leftAttributes);
+	rightIn->getAttributes(rightAttributes);
+
+	unsigned i;
+	for (i = 0; i < leftAttributes.size(); ++i)
+		lrAttributes.push_back(leftAttributes[i]);
+
+	for(i = 0; i < rightAttributes.size(); ++i)
+		lrAttributes.push_back(rightAttributes[i]);
+
+}
+
+RC getNextTuple(void *data){
+
+	
+
+}
+
+void getAttributes(vector<Attribute> &attrs) const{
+
+	attrs = lrAttributes;
+
+}
+
+
+
 
