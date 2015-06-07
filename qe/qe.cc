@@ -249,7 +249,7 @@ NLJoin::NLJoin(Iterator *leftIn, TableScan *rightIn,
 
 }
 
-RC getNextTuple(void *data){
+RC NLJoin::getNextTuple(void *data){
 	
 	void * left = malloc(PAGE_SIZE);
 	void * right = malloc (PAGE_SIZE);	
@@ -273,7 +273,7 @@ RC getNextTuple(void *data){
 
 }
 
-void getAttributes(vector<Attribute> &attrs) const{
+void NLJoin::getAttributes(vector<Attribute> &attrs) const{
 
 	attrs = lrAttributes;
 
