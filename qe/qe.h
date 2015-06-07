@@ -206,7 +206,7 @@ class Filter : public Iterator {
 
         RC getNextTuple(void *data); //{return QE_EOF;};
 
-		//static checkCondition(inputAttributes, data, this->condition);
+	bool checkCondition(vector<Attribute>, void*, Condition);
 
         // For attribute in vector<Attribute>, name it as rel.attr
         void getAttributes(vector<Attribute> &attrs) const; //{};
@@ -221,8 +221,8 @@ class Project : public Iterator {
 		vector<Attribute> outputAttributes;
 
     public:
-        Project(Iterator *input,                            // Iterator of input R
-                const vector<string> &attrNames){};           // vector containing attribute names
+        Project (Iterator *input,                            // Iterator of input R
+                const vector<string> &attrNames); //{};         // vector containing attribute names
         ~Project(){};
 
         RC getNextTuple(void *data); // {return QE_EOF;};

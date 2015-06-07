@@ -510,6 +510,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 	
 	//For each index
 	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
+
 		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
 		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_FILE_NAME, indexFileName);
 
@@ -689,6 +690,51 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 
 	// Close the table file.
 	_rbfm->closeFile(fileHandle);
+
+
+	//////////////////////////////////////////////////////////////////////////
+	RM_ScanIterator scanIterator;
+	if( _rm->getIndices(tableName, scanIterator) != SUCCESS){
+		fprintf(stderr, "RM.insertTuple(): getIndices() failed\n");
+		return 1;		
+	}
+
+	FileHandle indexFileHandle;
+	RID indicesRID;
+	void * indicesTuple;
+	void * keyAttributeName;
+	void * keyAttributeValue;
+	void * indexFileName;
+	unsigned i;
+	
+	//For each index
+	while (scanIterator.getNextTuple(indicesRID, indicesTuple) != RBFM_EOF){
+
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_ATTR_NAME, keyAttributeName);
+		_rm->readAttribute(string(INDICES_TABLE_NAME) + string(TABLE_FILE_EXTENSION), indicesRID, INDICES_COL_FILE_NAME, indexFileName);
+
+		for(i = 0; i < recordDescriptor.size(); ++i){
+			if(recordDescriptor[i].name == (char*)keyAttributeName){
+				//maybe have to read this from indexFile?
+				_rm->readAttribute(tableName, rid, (char*)keyAttributeName, keyAttributeValue);
+				break;
+			}
+		}
+		//open IndexFile w/ filename we just read		
+		_ix->openFile((char*)indexFileName, indexFileHandle);
+
+//RC deleteEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
+		_ix->deleteEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
+
+		//insert into indexfile		
+		_ix->insertEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
+
+		_ix->closeFile(indexFileHandle);
+	}
+
+
+
+
 
 	return result;
 }
