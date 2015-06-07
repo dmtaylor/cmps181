@@ -94,7 +94,8 @@ RC Project::getNextTuple(void* data){
 		bufferOffset += currAttributeSize;
 		dataOffset += currAttributeSize;
 
-	}	
+	}
+	free(buffer);
 
 	return SUCCESS;
 }
