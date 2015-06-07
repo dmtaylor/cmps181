@@ -250,8 +250,26 @@ NLJoin::NLJoin(Iterator *leftIn, TableScan *rightIn,
 }
 
 RC getNextTuple(void *data){
-
 	
+	void * left = malloc(PAGE_SIZE);
+	void * right = malloc (PAGE_SIZE);	
+
+	vector<Attribute> leftDescriptor;
+	vector<Attribute> rightDescriptor;
+
+	leftIn->getAttributes(leftDescriptor);
+	rightIn->getAttributes(rightDescriptor);
+
+
+
+	while(leftIn->getNextTuple(left) != QE_EOF){
+		
+		while(rightIn->getNextTuple(right) != QE_EOF) {
+						
+
+		}
+	}
+
 
 }
 
