@@ -626,6 +626,9 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 	vector<Attribute> recordDescriptor;
 	getAttributes(tableName, recordDescriptor);
     
+
+
+
     RM_ScanIterator scanIterator;
 	if( _rm->getIndices(tableName, scanIterator) != SUCCESS){
 		fprintf(stderr, "RM.insertTuple(): getIndices() failed\n");
@@ -684,6 +687,32 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 	// Gets the record descriptor of the table.
 	vector<Attribute> recordDescriptor;
 	getAttributes(tableName, recordDescriptor);
+
+
+/*
+	//gets old tuple info before update, may need in indexTable updates.
+	unsigned size;
+	unsigned x;
+	unsigned oldOffset = 0;
+	vector<void *> oldValues;
+	void * curr;
+	for(x = 0; x < recordDescriptor.size(); ++x){
+
+		if (recordDescriptor[x].type == TypeInt){
+			size = INT_SIZE;
+			//curr.type = TypeInt;
+		} else if(recordDescriptor[x].type == TypeReal){
+			size = REAL_SIZE;
+		}else{
+			memcpy(&size, (char*)data + oldOffset, VARCHAR_LENGTH_SIZE);
+			size += VARCHAR_LENGTH_SIZE;
+		}
+		memcpy(curr; (char*)data + oldOffset, size);
+		oldValues.push_back(curr);		
+		free(curr);
+
+	}
+*/
 
 	// Update the record.
 	RC result = _rbfm->updateRecord(fileHandle, recordDescriptor, data, rid);

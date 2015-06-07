@@ -31,7 +31,7 @@ struct Condition {
     CompOp  op;             // comparison operator
     bool    bRhsIsAttr;     // TRUE if right-hand side is an attribute and not a value; FALSE, otherwise.
     string rhsAttr;         // right-hand side attribute if bRhsIsAttr = TRUE
-    Value   rhsValue;       // right-hand side value if bRhsIsAttr = FALSE
+    Value  rhsValue;       // right-hand side value if bRhsIsAttr = FALSE
 };
 
 
@@ -198,6 +198,11 @@ class Filter : public Iterator {
 		Iterator* input;
 		Condition condition;
 		vector<Attribute> inputAttributes;
+	
+		bool checkCondition(int dataInt, CompOp compOp, const void * value);
+		bool checkCondition(float dataFloat, CompOp compOp, const void * value);
+		bool checkCondition(char * dataString, CompOp compOp, const void * value)
+	
     public:
         Filter(Iterator *input,                         // Iterator of input R
                const Condition &condition               // Selection condition
