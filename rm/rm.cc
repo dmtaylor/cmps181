@@ -724,7 +724,7 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 		_ix->openFile((char*)indexFileName, indexFileHandle);
 
 //RC deleteEntry(FileHandle &fileHandle, const Attribute &attribute, const void *key, const RID &rid)
-		_ix->deleteEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
+		//_ix->deleteEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
 
 		//insert into indexfile		
 		_ix->insertEntry(indexFileHandle, recordDescriptor[i], keyAttributeValue, rid);
